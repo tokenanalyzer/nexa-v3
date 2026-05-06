@@ -6,4 +6,6 @@ export interface VaultItem {
   content: string;
   date: string;
   platform: string;
+  scheduledDate?: string;
+  scheduledTime?: string;
 }

@@ -59,7 +59,8 @@ Return ONLY this JSON structure (no markdown, no extra text):
       "hook": "<psychological viral hook — curiosity gap, social proof, or shock value, in ${tone} tone>",
       "post": "<complete optimized post body in ${language} with ${tone} tone>",
       "hashtags": "<12 trending hashtags>",
-      "cta": "<one powerful call to action in ${tone} tone>"
+      "cta": "<one powerful call to action in ${tone} tone>",
+      "image_prompt": "<ultra-detailed, copy-pasteable Midjourney/DALL-E image prompt for the post visual — include style, lighting, composition, color palette, mood, camera angle, and art direction; 2-3 sentences>"
     }
   ],
   "content_calendar": [
@@ -70,6 +71,19 @@ Return ONLY this JSON structure (no markdown, no extra text):
 }`;
   const chat = model.startChat({ history: [] });
   const result = await chat.sendMessage(prompt);
+  return result.response.text();
+};
+
+export const getOptimalPostingTime = async (
+  platform: string,
+  topic: string
+): Promise<string> => {
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-2.5-flash',
+    systemInstruction: 'You are a social media analytics expert. Give concise, data-driven posting time recommendations in 2-3 sentences.',
+  });
+  const prompt = `What is the single best day of week and time (with timezone) to post about "${topic}" on ${platform} for maximum viral reach and engagement in 2026? Be specific and actionable.`;
+  const result = await model.generateContent(prompt);
   return result.response.text();
 };
 
