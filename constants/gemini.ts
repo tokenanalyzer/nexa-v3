@@ -21,26 +21,45 @@ export const sendMessage = async (
   return result.response.text();
 };
 
+export const streamMessage = async (
+  prompt: string,
+  history: { role: string; parts: { text: string }[] }[],
+  onChunk: (chunk: string) => void
+): Promise<void> => {
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-2.5-flash',
+    systemInstruction: SYSTEM_PROMPT,
+  });
+  const chat = model.startChat({ history });
+  const result = await chat.sendMessageStream(prompt);
+  for await (const chunk of result.stream) {
+    const text = chunk.text();
+    if (text) onChunk(text);
+  }
+};
+
 export const sendAutopilotMessage = async (
   topic: string,
   platforms: string[],
-  language: string
+  language: string,
+  tone: string
 ): Promise<string> => {
   const model = genAI.getGenerativeModel({
     model: 'gemini-2.5-flash',
     systemInstruction: AUTOPILOT_SYSTEM_PROMPT,
   });
-  const prompt = `Generate a 3-day viral content strategy for topic: "${topic}" targeting platforms: ${platforms.join(', ')}. All post content must be written in ${language}.
+  const prompt = `Generate a 3-day viral content strategy for topic: "${topic}" targeting platforms: ${platforms.join(', ')}.
+All post content must be written in ${language} with a ${tone} tone and style throughout.
 Return ONLY this JSON structure (no markdown, no extra text):
 {
   "viral_probability": <integer 0-100 reflecting true virality potential>,
   "platform_content": [
     {
       "platform": "<platform name>",
-      "hook": "<psychological viral hook — curiosity gap, social proof, or shock value>",
-      "post": "<complete optimized post body in ${language}>",
+      "hook": "<psychological viral hook — curiosity gap, social proof, or shock value, in ${tone} tone>",
+      "post": "<complete optimized post body in ${language} with ${tone} tone>",
       "hashtags": "<12 trending hashtags>",
-      "cta": "<one powerful call to action>"
+      "cta": "<one powerful call to action in ${tone} tone>"
     }
   ],
   "content_calendar": [
@@ -56,9 +75,9 @@ Return ONLY this JSON structure (no markdown, no extra text):
 
 export const PLATFORMS = [
   { id: 'instagram', name: 'Instagram', icon: '📸', color: '#E1306C' },
-  { id: 'youtube', name: 'YouTube', icon: '▶️', color: '#FF0000' },
-  { id: 'twitter', name: 'Twitter/X', icon: '🐦', color: '#1DA1F2' },
-  { id: 'linkedin', name: 'LinkedIn', icon: '💼', color: '#0077B5' },
-  { id: 'tiktok', name: 'TikTok', icon: '🎵', color: '#FF0050' },
-  { id: 'whatsapp', name: 'WhatsApp', icon: '💬', color: '#25D366' },
+  { id: 'youtube',   name: 'YouTube',   icon: '▶️',  color: '#FF0000' },
+  { id: 'twitter',   name: 'Twitter/X', icon: '🐦',  color: '#1DA1F2' },
+  { id: 'linkedin',  name: 'LinkedIn',  icon: '💼',  color: '#0077B5' },
+  { id: 'tiktok',    name: 'TikTok',    icon: '🎵',  color: '#FF0050' },
+  { id: 'whatsapp',  name: 'WhatsApp',  icon: '💬',  color: '#25D366' },
 ];

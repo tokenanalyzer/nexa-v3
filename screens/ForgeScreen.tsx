@@ -11,6 +11,14 @@ import { VAULT_STORAGE_KEY, VaultItem } from '../constants/vault';
 const LANGUAGES = ['English', 'Hindi', 'Spanish', 'Hinglish'] as const;
 type Language = typeof LANGUAGES[number];
 
+const TONES = [
+  { id: 'Professional', icon: '💼', tag: 'CORP.EXE',    desc: 'Clean, credible, boardroom-ready' },
+  { id: 'Gen-Z',        icon: '🔥', tag: 'VIBE.SYS',    desc: 'Chaotic, real, internet-native' },
+  { id: 'Sarcastic',    icon: '😏', tag: 'SARCASM.DLL',  desc: 'Dry wit, irony, culture jabs' },
+  { id: 'Inspirational',icon: '✨', tag: 'INSPIRE.BAT',  desc: 'Uplifting, motivational, shareable' },
+] as const;
+type Tone = typeof TONES[number]['id'];
+
 interface PlatformContent {
   platform: string;
   hook: string;
@@ -45,9 +53,8 @@ const getPlatformIcon = (name: string): string => {
   return p?.icon ?? '📱';
 };
 
-const cleanJSON = (raw: string): string => {
-  return raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
-};
+const cleanJSON = (raw: string): string =>
+  raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
 
 const glowStyle = (color: string) =>
   Platform.OS === 'web'
@@ -59,6 +66,7 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
   const [topic, setTopic] = useState('');
   const [selected, setSelected] = useState<string[]>(['instagram']);
   const [language, setLanguage] = useState<Language>('English');
+  const [tone, setTone] = useState<Tone>('Professional');
   const [autopilot, setAutopilot] = useState(false);
   const [result, setResult] = useState('');
   const [autopilotResult, setAutopilotResult] = useState<AutopilotResult | null>(null);
@@ -80,19 +88,18 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
     if (autopilot) {
       const platformNames = selected.map(s => PLATFORMS.find(p => p.id === s)?.name ?? s);
       try {
-        const raw = await sendAutopilotMessage(topic, platformNames, language);
-        const cleaned = cleanJSON(raw);
-        const parsed = JSON.parse(cleaned) as AutopilotResult;
+        const raw = await sendAutopilotMessage(topic, platformNames, language, tone);
+        const parsed = JSON.parse(cleanJSON(raw)) as AutopilotResult;
         setAutopilotResult(parsed);
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : 'Unknown error';
-        setResult('Parse error — raw response:\n\n' + msg);
+        setResult('Parse error:\n\n' + msg);
       } finally {
         setLoading(false);
       }
     } else {
       const names = selected.map(s => PLATFORMS.find(p => p.id === s)?.name).join(', ');
-      const prompt = `Create viral social media content in ${language} for: "${topic}" on platforms: ${names}. For each platform give: complete post, hashtags, viral hook, CTA. Make it trendy for 2026 audience.`;
+      const prompt = `Create viral social media content in ${language} with a ${tone} tone for: "${topic}" on platforms: ${names}. For each platform give: complete post, hashtags, viral hook, CTA. Make it trendy for 2026 audience.`;
       try {
         const reply = await sendMessage(prompt, []);
         setResult(reply);
@@ -109,6 +116,7 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
     if (autopilotResult) {
       const lines: string[] = [
         `VIRAL PROBABILITY: ${autopilotResult.viral_probability}%`,
+        `TONE: ${tone} | LANGUAGE: ${language}`,
         '',
         '--- PLATFORM CONTENT ---',
       ];
@@ -131,31 +139,24 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
   const hasOutput = !!result || !!autopilotResult;
 
   const copy = async () => {
-    const text = getContentString();
     try {
       if (typeof navigator !== 'undefined' && navigator.clipboard) {
-        await navigator.clipboard.writeText(text);
+        await navigator.clipboard.writeText(getContentString());
       }
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setCopied(false);
-    }
+    } catch { setCopied(false); }
   };
 
   const share = async () => {
-    try {
-      await Share.share({ message: getContentString() });
-    } catch {}
+    try { await Share.share({ message: getContentString() }); } catch {}
   };
 
   const saveToVault = async () => {
     try {
       const existing = await AsyncStorage.getItem(VAULT_STORAGE_KEY);
       const items: VaultItem[] = existing ? JSON.parse(existing) : [];
-      const platformLabel = selected
-        .map(s => PLATFORMS.find(p => p.id === s)?.name ?? s)
-        .join(', ');
+      const platformLabel = selected.map(s => PLATFORMS.find(p => p.id === s)?.name ?? s).join(', ');
       const newItem: VaultItem = {
         id: Date.now(),
         title: topic.slice(0, 60),
@@ -163,8 +164,7 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
         date: new Date().toLocaleDateString(),
         platform: platformLabel,
       };
-      const updated = [newItem, ...items];
-      await AsyncStorage.setItem(VAULT_STORAGE_KEY, JSON.stringify(updated));
+      await AsyncStorage.setItem(VAULT_STORAGE_KEY, JSON.stringify([newItem, ...items]));
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch {
@@ -193,7 +193,7 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
           MULTI-PLATFORM AI GENERATOR
         </Text>
 
-        {/* Copilot Auto-Pilot Toggle */}
+        {/* ── Copilot Auto-Pilot Toggle ── */}
         <TouchableOpacity
           onPress={() => setAutopilot(a => !a)}
           style={{
@@ -216,10 +216,7 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
             }} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={{
-              color: autopilot ? T.accent : T.text,
-              fontWeight: '900', fontSize: 12, letterSpacing: 1,
-            }}>
+            <Text style={{ color: autopilot ? T.accent : T.text, fontWeight: '900', fontSize: 12, letterSpacing: 1 }}>
               ⚡ COPILOT AUTO-PILOT
             </Text>
             <Text style={{ color: T.muted, fontSize: 9, marginTop: 2 }}>
@@ -238,7 +235,57 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
           </View>
         </TouchableOpacity>
 
-        {/* Language Selector */}
+        {/* ── Content Tone Selector ── */}
+        <View style={{ marginBottom: 16 }}>
+          <Text style={{ color: T.muted, fontSize: 9, fontWeight: '900', letterSpacing: 2, marginBottom: 10 }}>
+            🎭 CONTENT TONE MATRIX
+          </Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {TONES.map(t => {
+              const active = tone === t.id;
+              return (
+                <TouchableOpacity
+                  key={t.id}
+                  onPress={() => setTone(t.id)}
+                  style={{
+                    width: '48%',
+                    backgroundColor: active ? T.accent + '18' : T.surface,
+                    borderRadius: 12, padding: 12,
+                    borderWidth: active ? 1.5 : 1,
+                    borderColor: active ? T.accent : T.card,
+                    ...(active ? glowStyle(T.accent) : {}),
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                    <Text style={{ fontSize: 16 }}>{t.icon}</Text>
+                    <Text style={{
+                      color: active ? T.accent : T.text,
+                      fontSize: 11, fontWeight: '900', letterSpacing: 0.5, flex: 1,
+                    }}>
+                      {t.id.toUpperCase()}
+                    </Text>
+                  </View>
+                  <View style={{
+                    backgroundColor: active ? T.accent + '25' : T.card + '80',
+                    borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2,
+                    alignSelf: 'flex-start', marginBottom: 4,
+                  }}>
+                    <Text style={{
+                      color: active ? T.accent : T.muted,
+                      fontSize: 7, fontWeight: '900', letterSpacing: 1,
+                    }}>
+                      {t.tag}
+                    </Text>
+                  </View>
+                  <Text style={{ color: T.muted, fontSize: 9, lineHeight: 13 }}>{t.desc}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* ── Language Matrix ── */}
         <View style={{ marginBottom: 16 }}>
           <Text style={{ color: T.muted, fontSize: 9, fontWeight: '900', letterSpacing: 2, marginBottom: 10 }}>
             🌐 LANGUAGE MATRIX
@@ -269,7 +316,7 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
           </ScrollView>
         </View>
 
-        {/* Platform Selector */}
+        {/* ── Platform Selector ── */}
         <View style={{ marginBottom: 16 }}>
           <Text style={{ color: T.muted, fontSize: 9, fontWeight: '900', letterSpacing: 2, marginBottom: 10 }}>
             🎯 TARGET PLATFORMS
@@ -297,7 +344,7 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
           </View>
         </View>
 
-        {/* Topic Input */}
+        {/* ── Topic Input ── */}
         <View style={{
           backgroundColor: T.surface, borderRadius: 16, padding: 16,
           borderWidth: 1, borderColor: T.card, marginBottom: 14,
@@ -305,14 +352,14 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
           <TextInput
             value={topic}
             onChangeText={setTopic}
-            placeholder={autopilot ? 'Enter your topic for autonomous strategy...' : 'Enter your topic or idea...'}
+            placeholder={autopilot ? 'Enter topic for autonomous strategy...' : 'Enter your topic or idea...'}
             placeholderTextColor={T.muted}
             style={{ color: T.text, fontSize: 15, minHeight: 60 }}
             multiline
           />
         </View>
 
-        {/* Forge Button */}
+        {/* ── Forge Button ── */}
         <TouchableOpacity
           onPress={forge}
           disabled={loading || !topic.trim() || !selected.length}
@@ -349,17 +396,12 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
                 ⚡ VIRAL PROBABILITY SCORE
               </Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-                <Text style={{
-                  color: viralColor(autopilotResult.viral_probability),
-                  fontSize: 48, fontWeight: '900',
-                }}>
+                <Text style={{ color: viralColor(autopilotResult.viral_probability), fontSize: 48, fontWeight: '900' }}>
                   {autopilotResult.viral_probability}
                   <Text style={{ fontSize: 20 }}>%</Text>
                 </Text>
                 <View style={{ flex: 1 }}>
-                  <View style={{
-                    height: 8, backgroundColor: T.card, borderRadius: 4, overflow: 'hidden',
-                  }}>
+                  <View style={{ height: 8, backgroundColor: T.card, borderRadius: 4, overflow: 'hidden' }}>
                     <View style={{
                       height: 8,
                       width: `${autopilotResult.viral_probability}%` as unknown as number,
@@ -368,9 +410,9 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
                     }} />
                   </View>
                   <Text style={{ color: T.muted, fontSize: 9, marginTop: 6 }}>
-                    {autopilotResult.viral_probability >= 80 ? '🔥 HIGH VIRALITY POTENTIAL' :
-                      autopilotResult.viral_probability >= 60 ? '⚡ MODERATE VIRAL REACH' :
-                        '📊 BUILDING MOMENTUM'}
+                    {autopilotResult.viral_probability >= 80 ? '🔥 HIGH VIRALITY POTENTIAL'
+                      : autopilotResult.viral_probability >= 60 ? '⚡ MODERATE VIRAL REACH'
+                        : '📊 BUILDING MOMENTUM'}
                   </Text>
                 </View>
               </View>
@@ -387,10 +429,8 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
                 <View key={i} style={{
                   backgroundColor: T.surface, borderRadius: 16, marginBottom: 14,
                   borderWidth: 1, borderColor: T.card,
-                  borderLeftWidth: 3, borderLeftColor: color,
-                  overflow: 'hidden',
+                  borderLeftWidth: 3, borderLeftColor: color, overflow: 'hidden',
                 }}>
-                  {/* Card Header */}
                   <View style={{
                     flexDirection: 'row', alignItems: 'center', gap: 10,
                     padding: 14, paddingBottom: 10,
@@ -398,7 +438,7 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
                     borderBottomWidth: 1, borderBottomColor: T.card,
                   }}>
                     <Text style={{ fontSize: 20 }}>{icon}</Text>
-                    <Text style={{ color: color, fontSize: 13, fontWeight: '900', flex: 1 }}>
+                    <Text style={{ color, fontSize: 13, fontWeight: '900', flex: 1 }}>
                       {pc.platform.toUpperCase()}
                     </Text>
                     <View style={{
@@ -406,12 +446,11 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
                       paddingHorizontal: 8, paddingVertical: 3,
                       borderWidth: 1, borderColor: color + '40',
                     }}>
-                      <Text style={{ color, fontSize: 8, fontWeight: '900' }}>OPTIMIZED</Text>
+                      <Text style={{ color, fontSize: 8, fontWeight: '900' }}>{tone.toUpperCase()}</Text>
                     </View>
                   </View>
 
                   <View style={{ padding: 14, gap: 12 }}>
-                    {/* Hook */}
                     <View style={{
                       backgroundColor: T.accent + '10', borderRadius: 10, padding: 10,
                       borderWidth: 1, borderColor: T.accent + '30',
@@ -424,7 +463,6 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
                       </Text>
                     </View>
 
-                    {/* Post */}
                     <View>
                       <Text style={{ color: T.muted, fontSize: 8, fontWeight: '900', letterSpacing: 1, marginBottom: 6 }}>
                         📝 POST CONTENT
@@ -432,15 +470,13 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
                       <Text style={{ color: T.text, fontSize: 12, lineHeight: 20 }}>{pc.post}</Text>
                     </View>
 
-                    {/* Hashtags */}
                     <View>
                       <Text style={{ color: T.muted, fontSize: 8, fontWeight: '900', letterSpacing: 1, marginBottom: 6 }}>
                         # HASHTAGS
                       </Text>
-                      <Text style={{ color: color, fontSize: 11, lineHeight: 18 }}>{pc.hashtags}</Text>
+                      <Text style={{ color, fontSize: 11, lineHeight: 18 }}>{pc.hashtags}</Text>
                     </View>
 
-                    {/* CTA */}
                     <View style={{
                       backgroundColor: color + '15', borderRadius: 8, padding: 10,
                       borderWidth: 1, borderColor: color + '30',
@@ -455,7 +491,7 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
               );
             })}
 
-            {/* 3-Day Content Calendar */}
+            {/* 3-Day Calendar */}
             <Text style={{ color: T.muted, fontSize: 9, fontWeight: '900', letterSpacing: 2, marginBottom: 12 }}>
               ▸ 3-DAY CONTENT CALENDAR
             </Text>
@@ -463,14 +499,17 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
               {autopilotResult.content_calendar.map((d, i) => (
                 <View key={i} style={{
                   backgroundColor: T.surface, borderRadius: 14, padding: 14,
-                  borderWidth: 1, borderColor: T.card, flexDirection: 'row', gap: 12, alignItems: 'flex-start',
+                  borderWidth: 1, borderColor: T.card,
+                  flexDirection: 'row', gap: 12, alignItems: 'flex-start',
                 }}>
                   <View style={{
                     width: 44, height: 44, borderRadius: 10,
                     backgroundColor: T.accent + '20', borderWidth: 1, borderColor: T.accent + '40',
                     alignItems: 'center', justifyContent: 'center',
                   }}>
-                    <Text style={{ color: T.accent, fontSize: 9, fontWeight: '900' }}>{d.day.replace('Day ', 'D')}</Text>
+                    <Text style={{ color: T.accent, fontSize: 9, fontWeight: '900' }}>
+                      {d.day.replace('Day ', 'D')}
+                    </Text>
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={{ color: T.accent, fontSize: 11, fontWeight: '900', marginBottom: 4 }}>
@@ -487,23 +526,21 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
         {/* ── NORMAL OUTPUT ── */}
         {result ? (
           <View style={{
-            backgroundColor: T.surface, borderRadius: 16, padding: 16,
+            backgroundColor: T.surface, borderRadius: 16, padding: 16, marginBottom: 16,
             borderWidth: 1, borderLeftWidth: 3, borderColor: T.card, borderLeftColor: T.accent,
-            marginBottom: 16,
           }}>
             <Text style={{ color: T.text, fontSize: 13, lineHeight: 22 }}>{result}</Text>
           </View>
         ) : null}
 
-        {/* Action Buttons */}
+        {/* ── Action Buttons ── */}
         {hasOutput && (
           <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
             <TouchableOpacity
               onPress={copy}
               style={{
                 flex: 1, padding: 12, backgroundColor: T.surface,
-                borderRadius: 10, alignItems: 'center',
-                borderWidth: 1, borderColor: T.card,
+                borderRadius: 10, alignItems: 'center', borderWidth: 1, borderColor: T.card,
               }}
             >
               <Text style={{ color: T.accent, fontSize: 12, fontWeight: '900' }}>
@@ -515,8 +552,7 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
               onPress={share}
               style={{
                 flex: 1, padding: 12, backgroundColor: T.surface,
-                borderRadius: 10, alignItems: 'center',
-                borderWidth: 1, borderColor: T.card,
+                borderRadius: 10, alignItems: 'center', borderWidth: 1, borderColor: T.card,
               }}
             >
               <Text style={{ color: T.accent, fontSize: 12, fontWeight: '900' }}>📤 SHARE</Text>
