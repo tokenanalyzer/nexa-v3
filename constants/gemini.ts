@@ -87,6 +87,34 @@ export const getOptimalPostingTime = async (
   return result.response.text();
 };
 
+export interface TrendingTopic {
+  topic: string;
+  reason: string;
+  best_platform: string;
+  trend_score: number;
+  angle: string;
+}
+
+export const getTrendingTopics = async (niche: string): Promise<TrendingTopic[]> => {
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-2.5-flash',
+    systemInstruction: 'You are a viral trend intelligence analyst. Respond ONLY with a valid JSON array. No markdown fences, no explanation, no text outside the JSON array.',
+  });
+  const prompt = `Generate exactly 5 ultra-viral, hyper-specific content topic ideas for the "${niche}" niche that would explode on social media in 2026. Make them timely, controversial, or deeply useful — not generic. Return ONLY this JSON array:
+[
+  {
+    "topic": "<compelling, specific post topic — make it punchy and scroll-stopping>",
+    "reason": "<exactly why this will go viral right now — 1 sharp sentence>",
+    "best_platform": "<single best platform: Instagram/YouTube/Twitter/LinkedIn/TikTok/WhatsApp>",
+    "trend_score": <integer between 72 and 99>,
+    "angle": "<one of: Hot Take/Tutorial/Expose/Story/Controversy/Listicle/Challenge/Behind The Scenes>"
+  }
+]`;
+  const result = await model.generateContent(prompt);
+  const raw = result.response.text().replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+  return JSON.parse(raw) as TrendingTopic[];
+};
+
 export const PLATFORMS = [
   { id: 'instagram', name: 'Instagram', icon: '📸', color: '#E1306C' },
   { id: 'youtube',   name: 'YouTube',   icon: '▶️',  color: '#FF0000' },

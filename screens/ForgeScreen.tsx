@@ -5,7 +5,10 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { THEMES, ThemeKey } from '../constants/themes';
-import { sendMessage, sendAutopilotMessage, PLATFORMS } from '../constants/gemini';
+import {
+  sendMessage, sendAutopilotMessage, getTrendingTopics,
+  PLATFORMS, TrendingTopic,
+} from '../constants/gemini';
 import { VAULT_STORAGE_KEY, VaultItem } from '../constants/vault';
 
 const LANGUAGES = ['English', 'Hindi', 'Spanish', 'Hinglish'] as const;
@@ -18,6 +21,19 @@ const TONES = [
   { id: 'Inspirational', icon: '✨', tag: 'INSPIRE.BAT', desc: 'Uplifting, motivational, shareable' },
 ] as const;
 type Tone = typeof TONES[number]['id'];
+
+const NICHES = [
+  { id: 'Tech & AI',        icon: '🤖' },
+  { id: 'Business',         icon: '💼' },
+  { id: 'Health & Fitness', icon: '💪' },
+  { id: 'Lifestyle',        icon: '✨' },
+  { id: 'Finance & Crypto', icon: '📈' },
+  { id: 'Gaming',           icon: '🎮' },
+  { id: 'Fashion',          icon: '👗' },
+  { id: 'Food & Travel',    icon: '🌍' },
+  { id: 'Education',        icon: '📚' },
+  { id: 'Entertainment',    icon: '🎬' },
+];
 
 interface PlatformContent {
   platform: string;
@@ -54,6 +70,20 @@ const glow = (color: string) =>
     ? { shadowColor: color, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.85, shadowRadius: 14 }
     : { shadowColor: color, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.75, shadowRadius: 10, elevation: 8 };
 
+const trendScoreColor = (score: number) =>
+  score >= 90 ? '#00FF9D' : score >= 80 ? '#FFD700' : '#FF6B35';
+
+const ANGLE_COLORS: Record<string, string> = {
+  'Hot Take': '#FF4500',
+  'Controversy': '#FF0050',
+  'Expose': '#FF3D00',
+  'Challenge': '#E1306C',
+  'Tutorial': '#0077B5',
+  'Listicle': '#1DA1F2',
+  'Story': '#9B59B6',
+  'Behind The Scenes': '#25D366',
+};
+
 export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
   const T = THEMES[theme];
   const [topic, setTopic] = useState('');
@@ -68,8 +98,34 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
   const [saved, setSaved] = useState(false);
   const [copiedPrompt, setCopiedPrompt] = useState<string | null>(null);
 
+  // Trend Scout state
+  const [scoutOpen, setScoutOpen] = useState(false);
+  const [trendNiche, setTrendNiche] = useState('Tech & AI');
+  const [trends, setTrends] = useState<TrendingTopic[]>([]);
+  const [loadingTrends, setLoadingTrends] = useState(false);
+  const [trendError, setTrendError] = useState('');
+
   const togglePlatform = (id: string) =>
     setSelected(prev => prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]);
+
+  const scanTrends = async () => {
+    setLoadingTrends(true);
+    setTrends([]);
+    setTrendError('');
+    try {
+      const results = await getTrendingTopics(trendNiche);
+      setTrends(results);
+    } catch {
+      setTrendError('Could not fetch trends. Check API key and try again.');
+    } finally {
+      setLoadingTrends(false);
+    }
+  };
+
+  const useTrend = (t: TrendingTopic) => {
+    setTopic(t.topic);
+    setScoutOpen(false);
+  };
 
   const forge = async () => {
     if (!topic.trim() || !selected.length || loading) return;
@@ -202,7 +258,8 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
               ⚡ COPILOT AUTO-PILOT
             </Text>
             <Text style={{ color: T.muted, fontSize: 9, marginTop: 2 }}>
-              {autopilot ? 'AUTONOMOUS — Calendar + Viral Score + Platform Cards + Image Prompts'
+              {autopilot
+                ? 'AUTONOMOUS — Calendar + Viral Score + Platform Cards + Image Prompts'
                 : 'MANUAL MODE — Standard content generation with image prompts'}
             </Text>
           </View>
@@ -309,12 +366,195 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
           </View>
         </View>
 
-        {/* ── Topic ── */}
+        {/* ══════════════════════════════════════════ */}
+        {/* ── TREND SCOUT ── */}
+        {/* ══════════════════════════════════════════ */}
+        <TouchableOpacity
+          onPress={() => { setScoutOpen(o => !o); if (!scoutOpen) setTrends([]); }}
+          style={{
+            flexDirection: 'row', alignItems: 'center', gap: 10,
+            backgroundColor: scoutOpen ? '#FF6B3520' : T.surface,
+            borderRadius: 14, padding: 14, marginBottom: 14,
+            borderWidth: scoutOpen ? 1.5 : 1,
+            borderColor: scoutOpen ? '#FF6B35' : T.card,
+            ...(scoutOpen ? glow('#FF6B35') : {}),
+          }}
+          activeOpacity={0.8}
+        >
+          <Text style={{ fontSize: 18 }}>🔥</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: scoutOpen ? '#FF6B35' : T.text, fontSize: 12, fontWeight: '900', letterSpacing: 1 }}>
+              TREND SCOUT
+            </Text>
+            <Text style={{ color: T.muted, fontSize: 9, marginTop: 2 }}>
+              {scoutOpen ? 'AI SCANNING VIRAL TOPICS — tap a trend to use it'
+                : 'Discover what\'s about to go viral in your niche'}
+            </Text>
+          </View>
+          <View style={{
+            paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6,
+            backgroundColor: scoutOpen ? '#FF6B3520' : T.card,
+            borderWidth: 1, borderColor: scoutOpen ? '#FF6B3540' : 'transparent',
+          }}>
+            <Text style={{ color: scoutOpen ? '#FF6B35' : T.muted, fontSize: 9, fontWeight: '900' }}>
+              {scoutOpen ? 'CLOSE ▲' : 'OPEN ▼'}
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        {scoutOpen && (
+          <View style={{
+            backgroundColor: T.surface, borderRadius: 16, padding: 14,
+            borderWidth: 1.5, borderColor: '#FF6B3540',
+            marginBottom: 14, marginTop: -8,
+            ...glow('#FF6B35'),
+          }}>
+
+            {/* Niche label */}
+            <Text style={{ color: T.muted, fontSize: 9, fontWeight: '900', letterSpacing: 2, marginBottom: 10 }}>
+              SELECT YOUR NICHE
+            </Text>
+
+            {/* Niche chips */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {NICHES.map(n => {
+                  const active = trendNiche === n.id;
+                  return (
+                    <TouchableOpacity
+                      key={n.id}
+                      onPress={() => { setTrendNiche(n.id); setTrends([]); setTrendError(''); }}
+                      style={{
+                        flexDirection: 'row', alignItems: 'center', gap: 5,
+                        paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20,
+                        borderWidth: active ? 1.5 : 1,
+                        borderColor: active ? '#FF6B35' : T.card,
+                        backgroundColor: active ? '#FF6B3520' : T.bg,
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={{ fontSize: 12 }}>{n.icon}</Text>
+                      <Text style={{ color: active ? '#FF6B35' : T.muted, fontSize: 11, fontWeight: '900' }}>
+                        {n.id}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </ScrollView>
+
+            {/* Scan button */}
+            <TouchableOpacity
+              onPress={scanTrends}
+              disabled={loadingTrends}
+              style={{
+                backgroundColor: loadingTrends ? T.card : '#FF6B35',
+                borderRadius: 12, padding: 13,
+                alignItems: 'center', justifyContent: 'center',
+                flexDirection: 'row', gap: 8, marginBottom: 14,
+                ...(loadingTrends ? {} : glow('#FF6B35')),
+              }}
+              activeOpacity={0.85}
+            >
+              {loadingTrends
+                ? <ActivityIndicator color="#FF6B35" size="small" />
+                : <Text style={{ fontSize: 14 }}>📡</Text>}
+              <Text style={{ color: loadingTrends ? T.muted : '#fff', fontSize: 13, fontWeight: '900' }}>
+                {loadingTrends ? `SCANNING ${trendNiche.toUpperCase()}...` : `SCAN ${trendNiche.toUpperCase()} TRENDS`}
+              </Text>
+            </TouchableOpacity>
+
+            {/* Error */}
+            {trendError !== '' && (
+              <View style={{ backgroundColor: '#330000', borderRadius: 10, padding: 12, marginBottom: 10, borderWidth: 1, borderColor: '#550000' }}>
+                <Text style={{ color: '#FF4500', fontSize: 11 }}>{trendError}</Text>
+              </View>
+            )}
+
+            {/* Trend cards */}
+            {trends.length > 0 && (
+              <View style={{ gap: 10 }}>
+                <Text style={{ color: T.muted, fontSize: 9, fontWeight: '900', letterSpacing: 2, marginBottom: 2 }}>
+                  ▸ {trends.length} VIRAL TOPICS DETECTED
+                </Text>
+                {trends.map((t, i) => {
+                  const scoreColor = trendScoreColor(t.trend_score);
+                  const angleColor = ANGLE_COLORS[t.angle] ?? '#888';
+                  const platColor = getPlatformColor(t.best_platform);
+                  const platIcon = getPlatformIcon(t.best_platform);
+                  return (
+                    <TouchableOpacity
+                      key={i}
+                      onPress={() => useTrend(t)}
+                      style={{
+                        backgroundColor: T.bg, borderRadius: 14, padding: 14,
+                        borderWidth: 1, borderColor: T.card,
+                        borderLeftWidth: 3, borderLeftColor: scoreColor,
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      {/* Top row: score + badges */}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                        {/* Trend score */}
+                        <View style={{
+                          backgroundColor: scoreColor + '20', borderRadius: 8,
+                          paddingHorizontal: 8, paddingVertical: 4,
+                          borderWidth: 1, borderColor: scoreColor + '50',
+                          flexDirection: 'row', alignItems: 'center', gap: 4,
+                        }}>
+                          <Text style={{ color: scoreColor, fontSize: 11, fontWeight: '900' }}>
+                            {t.trend_score}
+                          </Text>
+                          <Text style={{ color: scoreColor, fontSize: 8, fontWeight: '900' }}>🔥</Text>
+                        </View>
+
+                        {/* Angle badge */}
+                        <View style={{
+                          backgroundColor: angleColor + '20', borderRadius: 6,
+                          paddingHorizontal: 7, paddingVertical: 3,
+                          borderWidth: 1, borderColor: angleColor + '50',
+                        }}>
+                          <Text style={{ color: angleColor, fontSize: 8, fontWeight: '900' }}>{t.angle.toUpperCase()}</Text>
+                        </View>
+
+                        {/* Platform badge */}
+                        <View style={{
+                          backgroundColor: platColor + '20', borderRadius: 6,
+                          paddingHorizontal: 7, paddingVertical: 3,
+                          borderWidth: 1, borderColor: platColor + '50',
+                          flexDirection: 'row', alignItems: 'center', gap: 3,
+                        }}>
+                          <Text style={{ fontSize: 9 }}>{platIcon}</Text>
+                          <Text style={{ color: platColor, fontSize: 8, fontWeight: '900' }}>{t.best_platform}</Text>
+                        </View>
+
+                        <View style={{ flex: 1 }} />
+                        <Text style={{ color: T.muted, fontSize: 9 }}>TAP TO USE ▸</Text>
+                      </View>
+
+                      {/* Topic */}
+                      <Text style={{ color: T.text, fontSize: 13, fontWeight: '800', lineHeight: 18, marginBottom: 6 }}>
+                        {t.topic}
+                      </Text>
+
+                      {/* Why viral */}
+                      <Text style={{ color: T.muted, fontSize: 10, lineHeight: 15, fontStyle: 'italic' }}>
+                        💡 {t.reason}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* ── Topic Input ── */}
         <View style={{ backgroundColor: T.surface, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: T.card, marginBottom: 14 }}>
           <TextInput
             value={topic}
             onChangeText={setTopic}
-            placeholder={autopilot ? 'Enter topic for autonomous strategy...' : 'Enter your topic or idea...'}
+            placeholder={autopilot ? 'Enter topic or pick one from Trend Scout above...' : 'Enter your topic or use Trend Scout above...'}
             placeholderTextColor={T.muted}
             style={{ color: T.text, fontSize: 15, minHeight: 60 }}
             multiline
@@ -393,7 +633,6 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
                   borderWidth: 1, borderColor: T.card,
                   borderLeftWidth: 3, borderLeftColor: color, overflow: 'hidden',
                 }}>
-                  {/* Card Header */}
                   <View style={{
                     flexDirection: 'row', alignItems: 'center', gap: 10,
                     padding: 14, paddingBottom: 10,
@@ -412,7 +651,6 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
                   </View>
 
                   <View style={{ padding: 14, gap: 12 }}>
-                    {/* Hook */}
                     <View style={{ backgroundColor: T.accent + '10', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: T.accent + '30' }}>
                       <Text style={{ color: T.accent, fontSize: 8, fontWeight: '900', letterSpacing: 1, marginBottom: 4 }}>
                         🎣 VIRAL HOOK
@@ -420,30 +658,26 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
                       <Text style={{ color: T.text, fontSize: 12, fontStyle: 'italic', lineHeight: 18 }}>"{pc.hook}"</Text>
                     </View>
 
-                    {/* Post */}
                     <View>
                       <Text style={{ color: T.muted, fontSize: 8, fontWeight: '900', letterSpacing: 1, marginBottom: 6 }}>📝 POST CONTENT</Text>
                       <Text style={{ color: T.text, fontSize: 12, lineHeight: 20 }}>{pc.post}</Text>
                     </View>
 
-                    {/* Hashtags */}
                     <View>
                       <Text style={{ color: T.muted, fontSize: 8, fontWeight: '900', letterSpacing: 1, marginBottom: 6 }}># HASHTAGS</Text>
                       <Text style={{ color, fontSize: 11, lineHeight: 18 }}>{pc.hashtags}</Text>
                     </View>
 
-                    {/* CTA */}
                     <View style={{ backgroundColor: color + '15', borderRadius: 8, padding: 10, borderWidth: 1, borderColor: color + '30' }}>
                       <Text style={{ color: T.muted, fontSize: 8, fontWeight: '900', letterSpacing: 1, marginBottom: 4 }}>🚀 CALL TO ACTION</Text>
                       <Text style={{ color: T.text, fontSize: 12, fontWeight: '700' }}>{pc.cta}</Text>
                     </View>
 
-                    {/* 🎨 Image Prompt */}
                     {pc.image_prompt && (
                       <View style={{
                         borderRadius: 12, padding: 12,
                         backgroundColor: '#0a0a1a',
-                        borderWidth: 1.5, borderColor: '#7B2FFF' + '70',
+                        borderWidth: 1.5, borderColor: '#7B2FFF70',
                         ...glow('#7B2FFF'),
                       }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
