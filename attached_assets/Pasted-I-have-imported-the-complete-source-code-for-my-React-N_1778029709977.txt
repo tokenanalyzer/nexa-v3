@@ -1,0 +1,22 @@
+I have imported the complete source code for my React Native (Expo) app from GitHub. I want to upgrade it to a fully Autonomous 'Agentic' App called 'Nexa Pro'. We have limited credits, so you must implement ALL of the following steps perfectly in ONE attempt, with zero TypeScript errors.
+​1. SECURITY FIRST (Environment Variables):
+​Remove the hardcoded API key from constants/gemini.ts.
+​Replace it with process.env.EXPO_PUBLIC_GEMINI_API_KEY.
+​Tell me exactly how to add this key to my Replit Secrets before building.
+​2. The 'OpenClaw' Copilot Logic (gemini.ts & ForgeScreen.tsx):
+​Add a stylish 'Copilot Auto-Pilot' toggle in ForgeScreen.tsx.
+​Add a Multi-Language dropdown (English, Hindi, Spanish, Hinglish).
+​When Auto-Pilot is ON, change the Gemini system prompt to act as an autonomous marketing agency. It must automatically generate a 3-day content calendar, psychological viral hooks, and a 'Viral Probability Score' for the selected topic.
+​Parse the Gemini response and render the output in separate, beautifully styled 'Platform Cards' (e.g., distinct UI for Twitter, Instagram, etc.) instead of a single text block.
+​3. Vault Integration:
+​Fully implement @react-native-async-storage/async-storage in VaultScreen.tsx.
+​Add a 'Save to Vault' button in ForgeScreen.tsx (next to Share/Copy) that saves the generated content, platform names, and date to the local storage.
+​4. Create an 'About' Screen:
+​Create a new screens/AboutScreen.tsx file. Design it like an elite 'Creator Dossier' or 'Developer Vault'.
+​Include sections for 'System Architecture', 'Multi-Language Matrix', and a glowing 'GitHub Vault' connection button.
+​Add this AboutScreen to the bottom tab navigation in App.tsx using a cool icon.
+​5. UI & FINAL BUILD:
+​Strictly use the existing dark themes (cyber and ocean) from constants/themes.ts. Make components look premium with neon-glow effects.
+​Do not run random npm installs unless required for UI/Storage.
+​As soon as the code is updated and error-free, remind me to add my API key to Secrets, then navigate to the root directory and execute this command to start the build:
+pnpm dlx eas-cli build -p android --profile preview --clear-cache"
