@@ -24,7 +24,7 @@ export default function HomeScreen({ theme, setTheme }: { theme: ThemeKey; setTh
   ];
 
   return (
-    <ScrollView style={{flex:1, background:T.bg}} contentContainerStyle={{padding:20, paddingBottom:100}}>
+    <ScrollView style={{flex:1, backgroundColor:T.bg}} contentContainerStyle={{padding:20, paddingBottom:100}}>
       <View style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:24}}>
         <View>
           <Text style={{color:T.muted, fontSize:10, fontWeight:'900', letterSpacing:2}}>NEURAL CORE</Text>
