@@ -1,13 +1,11 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY || '';
-
 const genAI = new GoogleGenerativeAI(API_KEY);
 
 export const hasApiKey = () => !!process.env.EXPO_PUBLIC_GEMINI_API_KEY;
 
 export const SYSTEM_PROMPT = `You are NEXA AI — an expert social media content strategist. You create viral content for Instagram, YouTube, Twitter/X, LinkedIn, TikTok and WhatsApp. Always be specific, creative and platform-optimized.`;
-
 export const AUTOPILOT_SYSTEM_PROMPT = `You are NEXA AUTOPILOT — an elite autonomous viral marketing agency AI. You ONLY respond with valid JSON. No markdown fences, no explanation, no text outside of the JSON object. Your JSON must be parseable by JSON.parse().`;
 
 export const sendMessage = async (
@@ -79,94 +77,95 @@ export const getOptimalPostingTime = async (platform: string, topic: string): Pr
 };
 
 export interface ABHooks {
-  hookA: string;
-  angleA: string;
-  hookB: string;
-  angleB: string;
+  hookA: string; angleA: string;
+  hookB: string; angleB: string;
 }
-
-export const generateABHooks = async (
-  topic: string,
-  platform: string,
-  tone: string
-): Promise<ABHooks> => {
+export const generateABHooks = async (topic: string, platform: string, tone: string): Promise<ABHooks> => {
   const model = genAI.getGenerativeModel({
     model: 'gemini-2.5-flash',
     systemInstruction: 'You are a viral hook copywriter. Respond ONLY with valid JSON. No markdown, no extra text.',
   });
-  const prompt = `Generate 2 competing viral hook variants for a ${platform} post about "${topic}" in a ${tone} tone. Each hook MUST use a different psychological trigger. Return ONLY this JSON:
-{
-  "hookA": "<hook variant A — complete, scroll-stopping>",
-  "angleA": "<psychological trigger — 2-3 words e.g. Curiosity Gap>",
-  "hookB": "<hook variant B — completely different approach>",
-  "angleB": "<psychological trigger — 2-3 words e.g. Social Proof>"
-}`;
-  const result = await model.generateContent(prompt);
+  const result = await model.generateContent(
+    `Generate 2 competing viral hook variants for a ${platform} post about "${topic}" in a ${tone} tone. Each hook MUST use a different psychological trigger. Return ONLY this JSON:
+{"hookA":"<hook A>","angleA":"<trigger A — 2-3 words>","hookB":"<hook B>","angleB":"<trigger B — 2-3 words>"}`
+  );
   const raw = result.response.text().replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
   return JSON.parse(raw) as ABHooks;
 };
 
 export interface ThreadTweet {
-  number: number;
-  tweet: string;
-  type: 'hook' | 'body' | 'cta';
+  number: number; tweet: string; type: 'hook' | 'body' | 'cta';
 }
-
-export const generateViralThread = async (
-  topic: string,
-  tone: string,
-  language: string
-): Promise<ThreadTweet[]> => {
+export const generateViralThread = async (topic: string, tone: string, language: string): Promise<ThreadTweet[]> => {
   const model = genAI.getGenerativeModel({
     model: 'gemini-2.5-flash',
     systemInstruction: 'You are an elite Twitter/X thread writer. Respond ONLY with a valid JSON array. No markdown, no extra text.',
   });
-  const prompt = `Write a 10-tweet viral Twitter/X thread about "${topic}" in ${language} with a ${tone} tone. Each tweet must be under 280 characters. Tweet 1 = irresistible hook. Tweets 2-9 = value/insights. Tweet 10 = powerful CTA + follow ask. Return ONLY this JSON array:
-[
-  { "number": 1, "tweet": "<tweet text>", "type": "hook" },
-  { "number": 2, "tweet": "<tweet text>", "type": "body" },
-  { "number": 3, "tweet": "<tweet text>", "type": "body" },
-  { "number": 4, "tweet": "<tweet text>", "type": "body" },
-  { "number": 5, "tweet": "<tweet text>", "type": "body" },
-  { "number": 6, "tweet": "<tweet text>", "type": "body" },
-  { "number": 7, "tweet": "<tweet text>", "type": "body" },
-  { "number": 8, "tweet": "<tweet text>", "type": "body" },
-  { "number": 9, "tweet": "<tweet text>", "type": "body" },
-  { "number": 10, "tweet": "<tweet text>", "type": "cta" }
-]`;
-  const result = await model.generateContent(prompt);
+  const result = await model.generateContent(
+    `Write a 10-tweet viral Twitter/X thread about "${topic}" in ${language} with a ${tone} tone. Each tweet must be under 280 characters. Tweet 1 = irresistible hook. Tweets 2-9 = value/insights. Tweet 10 = powerful CTA + follow ask. Return ONLY a JSON array: [{"number":1,"tweet":"...","type":"hook"},...]`
+  );
   const raw = result.response.text().replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
   return JSON.parse(raw) as ThreadTweet[];
 };
 
 export interface TrendingTopic {
-  topic: string;
-  reason: string;
-  best_platform: string;
-  trend_score: number;
-  angle: string;
+  topic: string; reason: string; best_platform: string; trend_score: number; angle: string;
 }
-
 export const getTrendingTopics = async (niche: string): Promise<TrendingTopic[]> => {
   const model = genAI.getGenerativeModel({
     model: 'gemini-2.5-flash',
     systemInstruction: 'You are a viral trend intelligence analyst. Respond ONLY with a valid JSON array. No markdown, no extra text.',
   });
-  const prompt = `Generate exactly 5 ultra-viral, hyper-specific content topic ideas for the "${niche}" niche in 2026. Return ONLY this JSON array:
-[
-  {
-    "topic": "<compelling, specific scroll-stopping post topic>",
-    "reason": "<exactly why this will go viral — 1 sharp sentence>",
-    "best_platform": "<single best platform: Instagram/YouTube/Twitter/LinkedIn/TikTok/WhatsApp>",
-    "trend_score": <integer between 72 and 99>,
-    "angle": "<one of: Hot Take/Tutorial/Expose/Story/Controversy/Listicle/Challenge/Behind The Scenes>"
-  }
-]`;
-  const result = await model.generateContent(prompt);
+  const result = await model.generateContent(
+    `Generate exactly 5 ultra-viral, hyper-specific content topic ideas for the "${niche}" niche in 2026. Return ONLY this JSON array:
+[{"topic":"<topic>","reason":"<why viral — 1 sentence>","best_platform":"<Instagram/YouTube/Twitter/LinkedIn/TikTok/WhatsApp>","trend_score":<72-99>,"angle":"<Hot Take/Tutorial/Expose/Story/Controversy/Listicle/Challenge/Behind The Scenes>"}]`
+  );
   const raw = result.response.text().replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
   return JSON.parse(raw) as TrendingTopic[];
 };
 
+// ── Brand Voice DNA Engine ─────────────────────────────────────
+export const BRAND_VOICE_KEY = 'nexa_brand_voice_dna';
+
+export interface BrandVoiceProfile {
+  name: string;
+  tone_fingerprint: string;
+  vocabulary_style: string;
+  sentence_rhythm: string;
+  power_words: string[];
+  humor_level: string;
+  cta_style: string;
+  avoid_words: string[];
+  dna_summary: string;
+}
+
+export const analyzeBrandVoice = async (posts: string): Promise<BrandVoiceProfile> => {
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-2.5-flash',
+    systemInstruction: 'You are a brand voice linguist and copywriter. Respond ONLY with valid JSON. No markdown, no extra text.',
+  });
+  const result = await model.generateContent(
+    `Analyze these social media posts and extract a precise brand voice DNA fingerprint. Return ONLY this JSON:
+{
+  "name": "<auto-generated profile name based on detected style>",
+  "tone_fingerprint": "<core tone in 3-5 words>",
+  "vocabulary_style": "<vocabulary complexity and word choice description>",
+  "sentence_rhythm": "<sentence structure and pacing description>",
+  "power_words": ["<word1>","<word2>","<word3>","<word4>","<word5>"],
+  "humor_level": "<None/Subtle/Moderate/Heavy>",
+  "cta_style": "<how this creator drives action>",
+  "avoid_words": ["<word1>","<word2>","<word3>"],
+  "dna_summary": "<2-sentence summary of this creator's unique voice fingerprint>"
+}
+
+Posts to analyze:
+${posts}`
+  );
+  const raw = result.response.text().replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+  return JSON.parse(raw) as BrandVoiceProfile;
+};
+
+// ── Utilities ──────────────────────────────────────────────────
 export const PLATFORMS = [
   { id: 'instagram', name: 'Instagram', icon: '📸', color: '#E1306C' },
   { id: 'youtube',   name: 'YouTube',   icon: '▶️',  color: '#FF0000' },
