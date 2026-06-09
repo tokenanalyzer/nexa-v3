@@ -1,17 +1,48 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY || '';
-const genAI = new GoogleGenerativeAI(API_KEY);
+// ── Key storage ────────────────────────────────────────────────
+export const GEMINI_KEY_STORAGE = 'nexa_api_key';
 
-export const hasApiKey = () => !!process.env.EXPO_PUBLIC_GEMINI_API_KEY;
+const getKey = async (): Promise<string> => {
+  try {
+    const stored = await AsyncStorage.getItem(GEMINI_KEY_STORAGE);
+    if (stored?.trim()) return stored.trim();
+  } catch {}
+  return process.env.EXPO_PUBLIC_GEMINI_API_KEY || '';
+};
 
-export const SYSTEM_PROMPT = `You are NEXA AI — an expert social media content strategist. You create viral content for Instagram, YouTube, Twitter/X, LinkedIn, TikTok and WhatsApp. Always be specific, creative and platform-optimized.`;
-export const AUTOPILOT_SYSTEM_PROMPT = `You are NEXA AUTOPILOT — an elite autonomous viral marketing agency AI. You ONLY respond with valid JSON. No markdown fences, no explanation, no text outside of the JSON object. Your JSON must be parseable by JSON.parse().`;
+const getGenAI = async (): Promise<GoogleGenerativeAI> => {
+  const key = await getKey();
+  return new GoogleGenerativeAI(key);
+};
 
+export const hasApiKey = async (): Promise<boolean> => {
+  const key = await getKey();
+  return !!key;
+};
+
+export const testApiKey = async (key: string): Promise<boolean> => {
+  try {
+    const client = new GoogleGenerativeAI(key);
+    const model = client.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const result = await model.generateContent('Reply with the single word: ok');
+    return !!result.response.text();
+  } catch { return false; }
+};
+
+// ── System prompts ─────────────────────────────────────────────
+const SYSTEM_PROMPT =
+  `You are NEXA AI — an expert social media content strategist. You create viral content for Instagram, YouTube, Twitter/X, LinkedIn, TikTok and WhatsApp. Always be specific, creative and platform-optimized.`;
+const AUTOPILOT_SYSTEM_PROMPT =
+  `You are NEXA AUTOPILOT — an elite autonomous viral marketing agency AI. You ONLY respond with valid JSON. No markdown fences, no explanation, no text outside of the JSON object. Your JSON must be parseable by JSON.parse().`;
+
+// ── Chat functions ─────────────────────────────────────────────
 export const sendMessage = async (
   prompt: string,
   history: { role: string; parts: { text: string }[] }[]
 ): Promise<string> => {
+  const genAI = await getGenAI();
   const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash', systemInstruction: SYSTEM_PROMPT });
   const chat = model.startChat({ history });
   const result = await chat.sendMessage(prompt);
@@ -23,6 +54,7 @@ export const streamMessage = async (
   history: { role: string; parts: { text: string }[] }[],
   onChunk: (chunk: string) => void
 ): Promise<void> => {
+  const genAI = await getGenAI();
   const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash', systemInstruction: SYSTEM_PROMPT });
   const chat = model.startChat({ history });
   const result = await chat.sendMessageStream(prompt);
@@ -33,11 +65,9 @@ export const streamMessage = async (
 };
 
 export const sendAutopilotMessage = async (
-  topic: string,
-  platforms: string[],
-  language: string,
-  tone: string
+  topic: string, platforms: string[], language: string, tone: string
 ): Promise<string> => {
+  const genAI = await getGenAI();
   const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash', systemInstruction: AUTOPILOT_SYSTEM_PROMPT });
   const prompt = `Generate a 3-day viral content strategy for topic: "${topic}" targeting platforms: ${platforms.join(', ')}.
 All post content must be written in ${language} with a ${tone} tone and style throughout.
@@ -66,6 +96,7 @@ Return ONLY this JSON (no markdown, no extra text):
 };
 
 export const getOptimalPostingTime = async (platform: string, topic: string): Promise<string> => {
+  const genAI = await getGenAI();
   const model = genAI.getGenerativeModel({
     model: 'gemini-2.5-flash',
     systemInstruction: 'You are a social media analytics expert. Give concise, data-driven posting time recommendations in 2-3 sentences.',
@@ -77,10 +108,10 @@ export const getOptimalPostingTime = async (platform: string, topic: string): Pr
 };
 
 export interface ABHooks {
-  hookA: string; angleA: string;
-  hookB: string; angleB: string;
+  hookA: string; angleA: string; hookB: string; angleB: string;
 }
 export const generateABHooks = async (topic: string, platform: string, tone: string): Promise<ABHooks> => {
+  const genAI = await getGenAI();
   const model = genAI.getGenerativeModel({
     model: 'gemini-2.5-flash',
     systemInstruction: 'You are a viral hook copywriter. Respond ONLY with valid JSON. No markdown, no extra text.',
@@ -97,6 +128,7 @@ export interface ThreadTweet {
   number: number; tweet: string; type: 'hook' | 'body' | 'cta';
 }
 export const generateViralThread = async (topic: string, tone: string, language: string): Promise<ThreadTweet[]> => {
+  const genAI = await getGenAI();
   const model = genAI.getGenerativeModel({
     model: 'gemini-2.5-flash',
     systemInstruction: 'You are an elite Twitter/X thread writer. Respond ONLY with a valid JSON array. No markdown, no extra text.',
@@ -112,6 +144,7 @@ export interface TrendingTopic {
   topic: string; reason: string; best_platform: string; trend_score: number; angle: string;
 }
 export const getTrendingTopics = async (niche: string): Promise<TrendingTopic[]> => {
+  const genAI = await getGenAI();
   const model = genAI.getGenerativeModel({
     model: 'gemini-2.5-flash',
     systemInstruction: 'You are a viral trend intelligence analyst. Respond ONLY with a valid JSON array. No markdown, no extra text.',
@@ -124,22 +157,17 @@ export const getTrendingTopics = async (niche: string): Promise<TrendingTopic[]>
   return JSON.parse(raw) as TrendingTopic[];
 };
 
-// ── Brand Voice DNA Engine ─────────────────────────────────────
+// ── Brand Voice DNA ─────────────────────────────────────────────
 export const BRAND_VOICE_KEY = 'nexa_brand_voice_dna';
 
 export interface BrandVoiceProfile {
-  name: string;
-  tone_fingerprint: string;
-  vocabulary_style: string;
-  sentence_rhythm: string;
-  power_words: string[];
-  humor_level: string;
-  cta_style: string;
-  avoid_words: string[];
-  dna_summary: string;
+  name: string; tone_fingerprint: string; vocabulary_style: string;
+  sentence_rhythm: string; power_words: string[]; humor_level: string;
+  cta_style: string; avoid_words: string[]; dna_summary: string;
 }
 
 export const analyzeBrandVoice = async (posts: string): Promise<BrandVoiceProfile> => {
+  const genAI = await getGenAI();
   const model = genAI.getGenerativeModel({
     model: 'gemini-2.5-flash',
     systemInstruction: 'You are a brand voice linguist and copywriter. Respond ONLY with valid JSON. No markdown, no extra text.',
@@ -176,9 +204,9 @@ export const PLATFORMS = [
 ];
 
 export const getEngagementEstimate = (score: number) => {
-  if (score >= 90) return { views: '500K–2M', likes: '50K–200K', shares: '20K–80K', comments: '5K–20K' };
-  if (score >= 80) return { views: '100K–500K', likes: '10K–50K', shares: '5K–20K', comments: '1K–5K' };
-  if (score >= 70) return { views: '30K–100K', likes: '3K–10K', shares: '1K–5K', comments: '300–1K' };
-  if (score >= 60) return { views: '10K–30K', likes: '1K–3K', shares: '300–1K', comments: '50–300' };
-  return { views: '1K–10K', likes: '100–1K', shares: '30–300', comments: '10–100' };
+  if (score >= 90) return { views: '500K–2M',  likes: '50K–200K', shares: '20K–80K', comments: '5K–20K' };
+  if (score >= 80) return { views: '100K–500K', likes: '10K–50K', shares: '5K–20K',  comments: '1K–5K'  };
+  if (score >= 70) return { views: '30K–100K',  likes: '3K–10K',  shares: '1K–5K',   comments: '300–1K' };
+  if (score >= 60) return { views: '10K–30K',   likes: '1K–3K',   shares: '300–1K',  comments: '50–300' };
+  return                  { views: '1K–10K',    likes: '100–1K',  shares: '30–300',   comments: '10–100' };
 };

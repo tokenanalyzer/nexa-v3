@@ -42,3 +42,7 @@ externalPort = 3001
 deploymentTarget = "static"
 build = ["npx", "expo", "export", "--platform", "web"]
 publicDir = "dist"
+
+[userenv]
+
+[userenv.shared]

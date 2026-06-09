@@ -1,33 +1,35 @@
 {
   "expo": {
-    "name": "Nexa Pro",
-    "slug": "nexa-v3",
+    "name": "NEXA AI",
+    "slug": "nexa-ai",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#050505"
+      "backgroundColor": "#ffffff"
     },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.tokenanalyzer.nexav3"
+      "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#050505"
+        "backgroundColor": "#ffffff"
       },
-      "package": "com.tokenanalyzer.nexav3"
+      "package": "com.nexa.ai"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/icon.png"
     },
     "extra": {
       "eas": {
-        "projectId": "6909e736-bdc9-40e9-b448-029ec3377ff0"
+        "projectId": "6ebb3c25-14e0-43b0-ae5d-6807ca74c7c9"
       }
     }
   }
