@@ -1,7 +1,7 @@
 export const THEMES = {
   light: {
-    bg: '#F8FAFC', surface: '#FFFFFF', card: '#F1F5F9', accent: '#6C47FF',
-    text: '#0F172A', muted: '#94A3B8', grad: '#EFF6FF', name: 'LIGHT',
+    bg: '#F5F5F7', surface: '#FFFFFF', card: '#E5E5EA', accent: '#5E5CE6',
+    text: '#1D1D1F', muted: '#6E6E73', grad: '#F5F5F7', name: 'LIGHT',
     isDark: false,
   },
   cyber: {

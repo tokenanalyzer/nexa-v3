@@ -14,6 +14,7 @@ export interface AgentInfo {
   model: string;
   badge: string;
   color: string;
+  role: string;
   specialty: string;
   speed: 'Fast' | 'Faster' | 'Fastest';
   storageKey: string;
@@ -26,8 +27,9 @@ export const AGENTS: AgentInfo[] = [
     name: 'Gemini',
     model: 'gemini-2.5-flash',
     badge: '✦',
-    color: '#6C47FF',
-    specialty: 'Autopilot, Brand DNA, Visual prompts',
+    color: '#5E5CE6',
+    role: 'Content Architect',
+    specialty: 'Full post body, visual prompts, brand DNA, autopilot',
     speed: 'Fast',
     storageKey: GEMINI_KEY_STORAGE,
     getKeyUrl: 'https://aistudio.google.com/app/apikey',
@@ -38,7 +40,8 @@ export const AGENTS: AgentInfo[] = [
     model: 'llama-3.3-70b-versatile',
     badge: '⚡',
     color: '#F43F5E',
-    specialty: 'Intel chat (ultra-fast streaming), Trend Scout',
+    role: 'Viral Scout',
+    specialty: 'Ultra-fast hooks, hashtags, trends, real-time chat',
     speed: 'Fastest',
     storageKey: GROQ_KEY_STORAGE,
     getKeyUrl: 'https://console.groq.com/keys',
@@ -49,7 +52,8 @@ export const AGENTS: AgentInfo[] = [
     model: 'Meta-Llama-3.3-70B-Instruct',
     badge: '◆',
     color: '#0EA5E9',
-    specialty: 'Thread Builder, Long-form content',
+    role: 'Growth Strategist',
+    specialty: 'SEO angles, engagement psychology, thread builder',
     speed: 'Faster',
     storageKey: SAMBA_KEY_STORAGE,
     getKeyUrl: 'https://cloud.sambanova.ai/apis',

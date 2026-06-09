@@ -7,18 +7,18 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AGENTS, AgentId, testGeminiKey, testGroqKey, testSambaKey } from '../constants/agents';
 
-const BG     = '#F8FAFC';
+const BG     = '#F5F5F7';
 const CARD   = '#FFFFFF';
-const LABEL  = '#0F172A';
-const MUTED  = '#94A3B8';
-const BORDER = '#E2E8F0';
-const SUCCESS = '#10B981';
-const DANGER  = '#F43F5E';
+const LABEL  = '#1D1D1F';
+const MUTED  = '#6E6E73';
+const BORDER = '#D2D2D7';
+const SUCCESS = '#30D158';
+const DANGER  = '#FF3B30';
 
-const shadow = (color = '#000', size = 8): object =>
+const shadow = (): object =>
   Platform.OS === 'web'
-    ? { boxShadow: `0 2px ${size}px ${color}18` } as object
-    : { shadowColor: color, shadowOpacity: 0.08, shadowRadius: size / 2, shadowOffset: { width: 0, height: 2 }, elevation: 2 };
+    ? { boxShadow: '0 2px 10px rgba(0,0,0,0.07)' } as object
+    : { shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2 };
 
 const testFns: Record<AgentId, (k: string) => Promise<boolean>> = {
   gemini: testGeminiKey,
@@ -26,30 +26,19 @@ const testFns: Record<AgentId, (k: string) => Promise<boolean>> = {
   samba:  testSambaKey,
 };
 
-interface SlotState {
-  value: string;
-  visible: boolean;
-  status: 'idle' | 'ok' | 'fail';
-  testing: boolean;
-}
-
+interface SlotState { value: string; visible: boolean; status: 'idle' | 'ok' | 'fail'; testing: boolean; }
 const initSlot = (): SlotState => ({ value: '', visible: false, status: 'idle', testing: false });
 
 export default function ApiKeyScreen({
-  onSaved,
-  inline = false,
-}: {
-  onSaved: () => void;
-  inline?: boolean;
-}) {
+  onSaved, inline = false,
+}: { onSaved: () => void; inline?: boolean }) {
   const [slots, setSlots] = useState<Record<AgentId, SlotState>>({
     gemini: initSlot(), groq: initSlot(), samba: initSlot(),
   });
   const [saving, setSaving] = useState(false);
   const fadeAnim  = useRef(new Animated.Value(inline ? 1 : 0)).current;
-  const slideAnim = useRef(new Animated.Value(inline ? 0 : 28)).current;
+  const slideAnim = useRef(new Animated.Value(inline ? 0 : 24)).current;
 
-  // Load existing keys
   useEffect(() => {
     const load = async () => {
       const updated = { ...slots };
@@ -109,32 +98,32 @@ export default function ApiKeyScreen({
     <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
 
       {/* Header */}
-      <View style={{ alignItems: 'center', paddingTop: inline ? 4 : 52, paddingBottom: 28, paddingHorizontal: 24 }}>
-        {!inline && (
-          <>
-            <View style={{
-              width: 72, height: 72, borderRadius: 20, marginBottom: 18,
-              alignItems: 'center', justifyContent: 'center',
-              backgroundColor: '#6C47FF',
-              ...(Platform.OS === 'web' ? { boxShadow: '0 8px 24px #6C47FF40' } as object : { shadowColor: '#6C47FF', shadowOpacity: 0.3, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 8 }),
-            }}>
-              <Text style={{ fontSize: 32 }}>🤖</Text>
-            </View>
-            <Text style={{ fontSize: 26, fontWeight: '700', color: LABEL, letterSpacing: -0.5, marginBottom: 6, textAlign: 'center' }}>
-              Connect Your AI Agents
-            </Text>
-            <Text style={{ fontSize: 14, color: MUTED, textAlign: 'center', lineHeight: 20, maxWidth: 300 }}>
-              Add your API keys to unlock all 3 AI agents. Only Gemini is required.
-            </Text>
-          </>
-        )}
-        {inline && (
-          <Text style={{ fontSize: 17, fontWeight: '700', color: LABEL, marginBottom: 4 }}>AI Agent Keys</Text>
-        )}
-      </View>
+      {!inline && (
+        <View style={{ alignItems: 'center', paddingTop: 52, paddingBottom: 28, paddingHorizontal: 24 }}>
+          <View style={{
+            width: 72, height: 72, borderRadius: 22, marginBottom: 18,
+            alignItems: 'center', justifyContent: 'center', backgroundColor: '#5E5CE6',
+            ...(Platform.OS === 'web' ? { boxShadow: '0 8px 24px #5E5CE635' } as object : { shadowColor: '#5E5CE6', shadowOpacity: 0.25, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 8 }),
+          }}>
+            <Text style={{ fontSize: 32 }}>🤖</Text>
+          </View>
+          <Text style={{ fontSize: 26, fontWeight: '700', color: LABEL, letterSpacing: -0.5, marginBottom: 6, textAlign: 'center' }}>
+            Connect AI Agents
+          </Text>
+          <Text style={{ fontSize: 14, color: MUTED, textAlign: 'center', lineHeight: 20, maxWidth: 300 }}>
+            Add your API keys to power all three AI agents. Only Gemini is required.
+          </Text>
+        </View>
+      )}
+      {inline && (
+        <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 18 }}>
+          <Text style={{ fontSize: 17, fontWeight: '700', color: LABEL }}>AI Agent Keys</Text>
+          <Text style={{ fontSize: 12, color: MUTED, marginTop: 3 }}>Manage your API keys for all three agents</Text>
+        </View>
+      )}
 
       {/* Agent slots */}
-      <View style={{ paddingHorizontal: 20, gap: 16, marginBottom: 20 }}>
+      <View style={{ paddingHorizontal: 20, gap: 14, marginBottom: 20 }}>
         {AGENTS.map(agent => {
           const slot = slots[agent.id];
           const borderColor = slot.status === 'ok' ? SUCCESS : slot.status === 'fail' ? DANGER : BORDER;
@@ -143,37 +132,37 @@ export default function ApiKeyScreen({
             <View key={agent.id} style={{
               backgroundColor: CARD, borderRadius: 18, padding: 16,
               borderWidth: 1.5, borderColor,
-              ...shadow(agent.color, 12),
+              ...shadow(),
             }}>
               {/* Agent header */}
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
                 <View style={{
                   width: 38, height: 38, borderRadius: 11,
-                  backgroundColor: agent.color + '15',
-                  borderWidth: 1.5, borderColor: agent.color + '40',
+                  backgroundColor: agent.color + '14',
+                  borderWidth: 1.5, borderColor: agent.color + '35',
                   alignItems: 'center', justifyContent: 'center',
                 }}>
-                  <Text style={{ fontSize: 16, fontWeight: '900', color: agent.color }}>{agent.badge}</Text>
+                  <Text style={{ fontSize: 15, fontWeight: '700', color: agent.color }}>{agent.badge}</Text>
                 </View>
                 <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Text style={{ fontSize: 15, fontWeight: '700', color: LABEL }}>{agent.name}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+                    <Text style={{ fontSize: 15, fontWeight: '600', color: LABEL }}>{agent.name}</Text>
                     {isRequired && (
-                      <View style={{ backgroundColor: agent.color + '18', borderRadius: 5, paddingHorizontal: 6, paddingVertical: 2, borderWidth: 1, borderColor: agent.color + '35' }}>
-                        <Text style={{ color: agent.color, fontSize: 9, fontWeight: '700' }}>REQUIRED</Text>
+                      <View style={{ backgroundColor: agent.color + '14', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, borderWidth: 1, borderColor: agent.color + '30' }}>
+                        <Text style={{ color: agent.color, fontSize: 9, fontWeight: '600' }}>Required</Text>
                       </View>
                     )}
-                    <View style={{ backgroundColor: '#F1F5F9', borderRadius: 5, paddingHorizontal: 6, paddingVertical: 2 }}>
+                    <View style={{ backgroundColor: '#F5F5F7', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
                       <Text style={{ color: MUTED, fontSize: 9, fontWeight: '600' }}>{agent.speed}</Text>
                     </View>
                   </View>
-                  <Text style={{ color: MUTED, fontSize: 11, marginTop: 2, lineHeight: 15 }}>{agent.specialty}</Text>
+                  <Text style={{ color: MUTED, fontSize: 11, marginTop: 2, lineHeight: 15 }}>{agent.role} · {agent.specialty.split(',')[0]}</Text>
                 </View>
-                {slot.status === 'ok' && <Text style={{ fontSize: 18 }}>✅</Text>}
+                {slot.status === 'ok'   && <Text style={{ fontSize: 18 }}>✅</Text>}
                 {slot.status === 'fail' && <Text style={{ fontSize: 18 }}>❌</Text>}
               </View>
 
-              {/* Input row */}
+              {/* Input */}
               <View style={{
                 flexDirection: 'row', alignItems: 'center',
                 backgroundColor: BG, borderRadius: 12,
@@ -185,42 +174,39 @@ export default function ApiKeyScreen({
                   secureTextEntry={!slot.visible}
                   placeholder={agent.id === 'gemini' ? 'AIza...' : agent.id === 'groq' ? 'gsk_...' : 'sn-...'}
                   placeholderTextColor={BORDER}
-                  autoCapitalize="none"
-                  autoCorrect={false}
+                  autoCapitalize="none" autoCorrect={false}
                   style={{
                     flex: 1, paddingHorizontal: 14, paddingVertical: 13,
                     fontSize: 14, color: LABEL,
                     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
                   }}
                 />
-                <TouchableOpacity onPress={() => updateSlot(agent.id, { visible: !slot.visible })} style={{ paddingHorizontal: 12 }} activeOpacity={0.6}>
+                <TouchableOpacity onPress={() => updateSlot(agent.id, { visible: !slot.visible })}
+                  style={{ paddingHorizontal: 12 }} activeOpacity={0.6}>
                   <Text style={{ fontSize: 16 }}>{slot.visible ? '🙈' : '👁️'}</Text>
                 </TouchableOpacity>
                 {Platform.OS === 'web' && (
-                  <TouchableOpacity onPress={() => pasteFor(agent.id)} style={{ paddingHorizontal: 12, paddingVertical: 13, borderLeftWidth: 1, borderLeftColor: BORDER }} activeOpacity={0.6}>
-                    <Text style={{ color: agent.color, fontSize: 12, fontWeight: '700' }}>Paste</Text>
+                  <TouchableOpacity onPress={() => pasteFor(agent.id)}
+                    style={{ paddingHorizontal: 12, paddingVertical: 13, borderLeftWidth: 1, borderLeftColor: BORDER }}
+                    activeOpacity={0.6}>
+                    <Text style={{ color: agent.color, fontSize: 12, fontWeight: '600' }}>Paste</Text>
                   </TouchableOpacity>
                 )}
               </View>
 
-              {/* Test + Get Key row */}
+              {/* Test + Get Key */}
               <View style={{ flexDirection: 'row', gap: 8 }}>
-                <TouchableOpacity
-                  onPress={() => handleTest(agent.id)}
-                  disabled={slot.testing || !slot.value.trim()}
+                <TouchableOpacity onPress={() => handleTest(agent.id)} disabled={slot.testing || !slot.value.trim()}
                   style={{
                     flex: 1, paddingVertical: 10, borderRadius: 10,
                     borderWidth: 1.5,
-                    borderColor: slot.status === 'ok' ? SUCCESS : slot.status === 'fail' ? DANGER : agent.color + '50',
+                    borderColor: slot.status === 'ok' ? SUCCESS : slot.status === 'fail' ? DANGER : agent.color + '45',
                     backgroundColor: slot.status === 'ok' ? SUCCESS + '10' : slot.status === 'fail' ? DANGER + '10' : agent.color + '08',
                     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-                  }}
-                  activeOpacity={0.7}
-                >
+                  }} activeOpacity={0.7}>
                   {slot.testing
                     ? <ActivityIndicator size="small" color={agent.color} />
-                    : <Text style={{ fontSize: 13 }}>{slot.status === 'ok' ? '✓' : slot.status === 'fail' ? '✗' : '🔗'}</Text>
-                  }
+                    : <Text style={{ fontSize: 12 }}>{slot.status === 'ok' ? '✓' : slot.status === 'fail' ? '✗' : '🔗'}</Text>}
                   <Text style={{
                     fontSize: 12, fontWeight: '600',
                     color: slot.status === 'ok' ? SUCCESS : slot.status === 'fail' ? DANGER : slot.testing ? MUTED : agent.color,
@@ -228,14 +214,9 @@ export default function ApiKeyScreen({
                     {slot.testing ? 'Testing…' : slot.status === 'ok' ? 'Verified' : slot.status === 'fail' ? 'Failed' : 'Test'}
                   </Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => Linking.openURL(agent.getKeyUrl)}
-                  style={{
-                    paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10,
-                    borderWidth: 1, borderColor: BORDER, backgroundColor: CARD,
-                  }}
-                  activeOpacity={0.7}
-                >
+                <TouchableOpacity onPress={() => Linking.openURL(agent.getKeyUrl)}
+                  style={{ paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: BORDER, backgroundColor: CARD }}
+                  activeOpacity={0.7}>
                   <Text style={{ color: MUTED, fontSize: 12, fontWeight: '600' }}>Get Key ↗</Text>
                 </TouchableOpacity>
               </View>
@@ -246,34 +227,29 @@ export default function ApiKeyScreen({
 
       {/* Save button */}
       <View style={{ marginHorizontal: 20, marginBottom: 10 }}>
-        <TouchableOpacity
-          onPress={handleSave}
-          disabled={saving || !geminiVal}
+        <TouchableOpacity onPress={handleSave} disabled={saving || !geminiVal}
           style={{
-            backgroundColor: geminiVal ? '#6C47FF' : BORDER,
+            backgroundColor: geminiVal ? '#5E5CE6' : BORDER,
             borderRadius: 14, paddingVertical: 16,
             alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8,
-            ...(geminiVal && Platform.OS === 'web'
-              ? { boxShadow: '0 4px 20px #6C47FF45' } as object
-              : geminiVal ? { shadowColor: '#6C47FF', shadowOpacity: 0.28, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 6 } : {}),
-          }}
-          activeOpacity={0.85}
-        >
-          {saving
-            ? <ActivityIndicator color="#fff" />
-            : <Text style={{ fontSize: 17, fontWeight: '700', color: '#fff', letterSpacing: -0.2 }}>
-                {inline ? 'Save Keys' : 'Save & Launch NEXA'}
-              </Text>
-          }
+            ...(geminiVal && Platform.OS === 'web' ? { boxShadow: '0 4px 20px #5E5CE640' } as object
+              : geminiVal ? { shadowColor: '#5E5CE6', shadowOpacity: 0.25, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 6 } : {}),
+          }} activeOpacity={0.85}>
+          {saving ? <ActivityIndicator color="#fff" /> : (
+            <Text style={{ fontSize: 17, fontWeight: '700', color: geminiVal ? '#fff' : MUTED }}>
+              {inline ? 'Save Keys' : 'Save & Launch Nexa'}
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
 
-      {/* Footer note */}
-      <View style={{ alignItems: 'center', paddingHorizontal: 24, paddingTop: 8, paddingBottom: 36 }}>
+      {/* Footer */}
+      <View style={{ alignItems: 'center', paddingHorizontal: 24, paddingTop: 10, paddingBottom: 36 }}>
         <Text style={{ color: MUTED, fontSize: 11, textAlign: 'center', lineHeight: 17 }}>
-          Keys are stored only on this device.{'\n'}They are never sent to any server other than the respective AI provider.
+          Keys are stored only on this device.{'\n'}Never sent to any server other than the respective AI provider.
         </Text>
       </View>
+
     </Animated.View>
   );
 

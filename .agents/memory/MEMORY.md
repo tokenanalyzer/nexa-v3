@@ -1,0 +1,3 @@
+- [Swarm architecture](swarm-arch.md) — 3 agents run in parallel via Promise.allSettled in swarmForge(); Gemini=Architect (post/CTA/image), Groq=Scout (hooks/hashtags/time), SambaNova=Strategist (SEO/psychology/altAngle)
+- [Apple design system](apple-design.md) — light theme uses isDark flag; no glows on light, soft `0 2px 12px rgba(0,0,0,0.07)` shadow; fonts max 700 weight; cardBg=#FFFFFF, cardBorder=#E5E5EA, textSub=#6E6E73
+- [ForgeScreen modes](forge-modes.md) — mode state is 'manual'|'autopilot'|'swarm'; swarm fires all 3 simultaneously with onStatus callback for live progress UI
