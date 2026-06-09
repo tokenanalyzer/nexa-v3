@@ -70,8 +70,8 @@ const TWEET_TYPE_COLOR: Record<string, string> = {
 const bgStyle = (theme: ThemeKey): object =>
   Platform.OS === 'web'
     ? ({
-        background: theme === 'arctic'
-          ? 'linear-gradient(160deg,#edf1f6 0%,#f5f7fa 100%)'
+        background: theme === 'light'
+          ? 'linear-gradient(160deg,#F8FAFC 0%,#F0F4FF 100%)'
           : theme === 'cyber'
             ? 'linear-gradient(160deg,#020209 0%,#060618 100%)'
             : theme === 'ocean'

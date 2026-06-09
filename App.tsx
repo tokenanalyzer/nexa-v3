@@ -5,14 +5,13 @@ import {
 } from 'react-native';
 import { THEMES, ThemeKey } from './constants/themes';
 import { hasApiKey } from './constants/gemini';
-import HomeScreen  from './screens/HomeScreen';
-import IntelScreen from './screens/IntelScreen';
-import ForgeScreen from './screens/ForgeScreen';
-import VaultScreen from './screens/VaultScreen';
-import AboutScreen from './screens/AboutScreen';
+import { getActiveAgents, AgentId } from './constants/agents';
+import HomeScreen   from './screens/HomeScreen';
+import IntelScreen  from './screens/IntelScreen';
+import ForgeScreen  from './screens/ForgeScreen';
+import VaultScreen  from './screens/VaultScreen';
+import AboutScreen  from './screens/AboutScreen';
 import ApiKeyScreen from './screens/ApiKeyScreen';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { GEMINI_KEY_STORAGE } from './constants/gemini';
 
 const TABS = [
   { id: 'home',  icon: '⚡', label: 'HOME'  },
@@ -23,102 +22,110 @@ const TABS = [
 ];
 
 export default function App() {
-  const [ready, setReady]         = useState(false);
-  const [hasKey, setHasKey]       = useState(false);
-  const [tab, setTab]             = useState('home');
-  const [theme, setTheme]         = useState<ThemeKey>('cyber');
-  const [keyModal, setKeyModal]   = useState(false);
-  const [savedKey, setSavedKey]   = useState('');
+  const [ready, setReady]       = useState(false);
+  const [hasKey, setHasKey]     = useState(false);
+  const [tab, setTab]           = useState('home');
+  const [theme, setTheme]       = useState<ThemeKey>('light');
+  const [keyModal, setKeyModal] = useState(false);
+  const [activeAgents, setActiveAgents] = useState<AgentId[]>([]);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  // Check for API key on mount
   useEffect(() => {
     const boot = async () => {
       const ok = await hasApiKey();
-      if (ok) {
-        const stored = await AsyncStorage.getItem(GEMINI_KEY_STORAGE).catch(() => '');
-        setSavedKey(stored || '');
-      }
       setHasKey(ok);
+      if (ok) getActiveAgents().then(setActiveAgents);
       setReady(true);
-      Animated.timing(fadeAnim, { toValue: 1, duration: 420, useNativeDriver: false }).start();
+      Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: false }).start();
     };
     boot();
   }, []);
 
   const T = THEMES[theme];
+  const isDark = T.isDark;
 
-  const tabBg: object = Platform.OS === 'web'
-    ? ({
-        background: theme === 'arctic'
-          ? 'linear-gradient(180deg,#edf1f6 0%,#f5f7fa 100%)'
-          : `linear-gradient(180deg,${T.surface} 0%,${T.bg} 100%)`,
-      } as object)
-    : { backgroundColor: T.surface };
+  const refreshAgents = async () => {
+    const ok = await hasApiKey();
+    setHasKey(ok);
+    const agents = await getActiveAgents();
+    setActiveAgents(agents);
+  };
 
-  // ── Loading splash ───────────────────────────────────────────
+  // Loading splash
   if (!ready) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#020209', alignItems: 'center', justifyContent: 'center' }}>
-        <StatusBar barStyle="light-content" backgroundColor="#020209" />
-        <Text style={{ color: '#00FF9D', fontSize: 28, fontWeight: '900', letterSpacing: 1 }}>
-          NEXA <Text style={{ color: '#fff' }}>AI</Text>
+      <View style={{ flex: 1, backgroundColor: '#F8FAFC', alignItems: 'center', justifyContent: 'center' }}>
+        <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
+        <Text style={{ color: '#6C47FF', fontSize: 30, fontWeight: '800', letterSpacing: -1 }}>
+          Nexa <Text style={{ color: '#0F172A' }}>AI</Text>
         </Text>
-        <Text style={{ color: '#333', fontSize: 11, marginTop: 10, letterSpacing: 3 }}>INITIALIZING...</Text>
+        <Text style={{ color: '#94A3B8', fontSize: 11, marginTop: 10, letterSpacing: 3 }}>LOADING...</Text>
       </View>
     );
   }
 
-  // ── First-run: no API key → show onboarding ──────────────────
+  // First-run: no key
   if (!hasKey) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#F2F2F7' }}>
-        <StatusBar barStyle="dark-content" backgroundColor="#F2F2F7" />
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
+        <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
         <ApiKeyScreen
           onSaved={async () => {
-            const ok = await hasApiKey();
-            const stored = await AsyncStorage.getItem(GEMINI_KEY_STORAGE).catch(() => '');
-            setSavedKey(stored || '');
-            setHasKey(ok);
+            await refreshAgents();
           }}
         />
       </SafeAreaView>
     );
   }
 
-  // ── Main app ─────────────────────────────────────────────────
+  const tabBarBg: object = Platform.OS === 'web'
+    ? ({
+        background: isDark
+          ? `linear-gradient(180deg, ${T.surface} 0%, ${T.bg} 100%)`
+          : 'linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%)',
+      } as object)
+    : { backgroundColor: isDark ? T.surface : '#FFFFFF' };
+
+  const activeColor = '#6C47FF';
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: T.bg }}>
-      <StatusBar barStyle="light-content" backgroundColor={T.bg} />
+    <SafeAreaView style={{ flex: 1, backgroundColor: isDark ? T.bg : '#F8FAFC' }}>
+      <StatusBar
+        barStyle={isDark ? 'light-content' : 'dark-content'}
+        backgroundColor={isDark ? T.bg : '#F8FAFC'}
+      />
 
       <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
 
-        {/* Key settings modal */}
+        {/* API Keys modal */}
         <Modal visible={keyModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setKeyModal(false)}>
-          <SafeAreaView style={{ flex: 1, backgroundColor: '#F2F2F7' }}>
-            {/* Modal header */}
+          <SafeAreaView style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
             <View style={{
               flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
               paddingHorizontal: 20, paddingVertical: 14,
-              borderBottomWidth: 1, borderBottomColor: '#E5E5EA', backgroundColor: '#F2F2F7',
+              borderBottomWidth: 1, borderBottomColor: '#E2E8F0',
+              backgroundColor: '#FFFFFF',
             }}>
-              <Text style={{ fontSize: 17, fontWeight: '700', color: '#1C1C1E' }}>API Key Settings</Text>
+              <View>
+                <Text style={{ fontSize: 17, fontWeight: '700', color: '#0F172A' }}>AI Agent Keys</Text>
+                <Text style={{ fontSize: 11, color: '#94A3B8', marginTop: 2 }}>
+                  {activeAgents.length}/3 agents active
+                </Text>
+              </View>
               <TouchableOpacity
                 onPress={() => setKeyModal(false)}
-                style={{ backgroundColor: '#E5E5EA', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7 }}
+                style={{ backgroundColor: '#F1F5F9', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8 }}
                 activeOpacity={0.7}
               >
-                <Text style={{ color: '#1C1C1E', fontSize: 14, fontWeight: '600' }}>Done</Text>
+                <Text style={{ color: '#0F172A', fontSize: 14, fontWeight: '600' }}>Done</Text>
               </TouchableOpacity>
             </View>
-            <ScrollView style={{ flex: 1, backgroundColor: '#F2F2F7' }} keyboardShouldPersistTaps="handled">
+            <ScrollView style={{ flex: 1, backgroundColor: '#F8FAFC' }} keyboardShouldPersistTaps="handled">
               <ApiKeyScreen
                 inline
-                existingKey={savedKey}
                 onSaved={async () => {
-                  const stored = await AsyncStorage.getItem(GEMINI_KEY_STORAGE).catch(() => '');
-                  setSavedKey(stored || '');
+                  await refreshAgents();
                   setKeyModal(false);
                 }}
               />
@@ -135,11 +142,13 @@ export default function App() {
           {tab === 'about' && <AboutScreen theme={theme} />}
         </View>
 
-        {/* Premium tab bar */}
+        {/* Tab bar */}
         <View style={[{
-          flexDirection: 'row', borderTopWidth: 1,
-          borderTopColor: T.card, paddingBottom: 8, paddingTop: 2,
-        }, tabBg]}>
+          flexDirection: 'row',
+          borderTopWidth: 1,
+          borderTopColor: isDark ? T.card : '#E2E8F0',
+          paddingBottom: 6, paddingTop: 2,
+        }, tabBarBg]}>
           {TABS.map(t => {
             const active = tab === t.id;
             return (
@@ -151,27 +160,44 @@ export default function App() {
               >
                 {active && (
                   <View style={{
-                    position: 'absolute', top: 0, left: '15%', right: '15%',
-                    height: 2, borderRadius: 2, backgroundColor: T.accent,
-                    ...(Platform.OS === 'web' ? { boxShadow: `0 0 8px ${T.accent}` } as object : {}),
+                    position: 'absolute', top: 0, left: '20%', right: '20%',
+                    height: 2.5, borderRadius: 2, backgroundColor: activeColor,
+                    ...(Platform.OS === 'web' ? { boxShadow: `0 0 8px ${activeColor}80` } as object : {}),
                   }} />
                 )}
-                <Text style={{ fontSize: 18, opacity: active ? 1 : 0.28 }}>{t.icon}</Text>
-                <Text style={{ fontSize: 7, fontWeight: '900', letterSpacing: 1, color: active ? T.accent : T.muted }}>
+                <Text style={{ fontSize: 18, opacity: active ? 1 : 0.3 }}>{t.icon}</Text>
+                <Text style={{
+                  fontSize: 8, fontWeight: '700', letterSpacing: 0.5,
+                  color: active ? activeColor : (isDark ? T.muted : '#94A3B8'),
+                }}>
                   {t.label}
                 </Text>
               </TouchableOpacity>
             );
           })}
 
-          {/* API Key settings button — always visible */}
+          {/* Key management button */}
           <TouchableOpacity
             onPress={() => setKeyModal(true)}
-            style={{ width: 50, alignItems: 'center', paddingVertical: 8, gap: 3 }}
+            style={{ width: 52, alignItems: 'center', paddingVertical: 8, gap: 3 }}
             activeOpacity={0.7}
           >
-            <Text style={{ fontSize: 18, opacity: 0.5 }}>🔑</Text>
-            <Text style={{ fontSize: 7, fontWeight: '900', letterSpacing: 1, color: T.muted }}>KEY</Text>
+            <View style={{ position: 'relative' }}>
+              <Text style={{ fontSize: 18, opacity: 0.4 }}>🔑</Text>
+              {activeAgents.length > 1 && (
+                <View style={{
+                  position: 'absolute', top: -3, right: -4,
+                  width: 14, height: 14, borderRadius: 7,
+                  backgroundColor: '#10B981', alignItems: 'center', justifyContent: 'center',
+                  borderWidth: 1.5, borderColor: isDark ? T.bg : '#F8FAFC',
+                }}>
+                  <Text style={{ color: '#fff', fontSize: 8, fontWeight: '800' }}>{activeAgents.length}</Text>
+                </View>
+              )}
+            </View>
+            <Text style={{ fontSize: 7, fontWeight: '700', letterSpacing: 0.5, color: isDark ? T.muted : '#94A3B8' }}>
+              KEYS
+            </Text>
           </TouchableOpacity>
         </View>
 

@@ -6,6 +6,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { THEMES, ThemeKey } from '../constants/themes';
 import { VAULT_STORAGE_KEY, VaultItem } from '../constants/vault';
+import { getActiveAgents, AgentId } from '../constants/agents';
 
 const DAILY_TIPS = [
   { tip: 'Post Reels between 6–9 PM on weekdays — the algorithm rewards peak-hour uploads with 3× more reach.', icon: '📱' },
@@ -17,86 +18,61 @@ const DAILY_TIPS = [
   { tip: 'End every post with a question. Comments signal the algorithm that your content sparks conversation.', icon: '💬' },
 ];
 
-const GREETINGS = ['Good Morning', 'Good Afternoon', 'Good Evening', 'Good Night'];
-const getGreeting = () => {
-  const h = new Date().getHours();
-  if (h >= 5 && h < 12) return GREETINGS[0];
-  if (h >= 12 && h < 17) return GREETINGS[1];
-  if (h >= 17 && h < 21) return GREETINGS[2];
-  return GREETINGS[3];
+const AGENT_META: Record<AgentId, { label: string; color: string; badge: string; speed: string }> = {
+  gemini: { label: 'Gemini 2.5',  color: '#6C47FF', badge: '✦', speed: 'Fast'    },
+  groq:   { label: 'Groq Llama', color: '#F43F5E', badge: '⚡', speed: 'Fastest' },
+  samba:  { label: 'SambaNova',  color: '#0EA5E9', badge: '◆', speed: 'Faster'  },
 };
 
+const getGreeting = () => {
+  const h = new Date().getHours();
+  if (h >= 5  && h < 12) return 'Good Morning';
+  if (h >= 12 && h < 17) return 'Good Afternoon';
+  if (h >= 17 && h < 21) return 'Good Evening';
+  return 'Good Night';
+};
 const formatDate = () =>
   new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
-const glow = (color: string, radius = 16) =>
-  Platform.OS === 'web'
-    ? ({ boxShadow: `0 0 ${radius}px ${color}88` } as object)
-    : { shadowColor: color, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.6, shadowRadius: radius / 2, elevation: 6 };
-
-const glassSurface = (accentHex: string) =>
-  Platform.OS === 'web'
-    ? ({
-        background: `linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)`,
-        backdropFilter: 'blur(12px)',
-        borderColor: `${accentHex}25`,
-      } as object)
-    : { borderColor: `${accentHex}25` };
-
 export default function HomeScreen({
-  theme,
-  setTheme,
-  setTab,
+  theme, setTheme, setTab,
 }: {
   theme: ThemeKey;
   setTheme: (t: ThemeKey) => void;
   setTab?: (t: string) => void;
 }) {
   const T = THEMES[theme];
+  const isDark = T.isDark;
 
-  // ── Animated values ──────────────────────────────────────────
-  const pulseAnim = useRef(new Animated.Value(0)).current;
-  const dotAnim   = useRef(new Animated.Value(0)).current;
   const fadeAnim  = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
+  const dotAnim   = useRef(new Animated.Value(0)).current;
 
-  // ── State ────────────────────────────────────────────────────
-  const [pulse, setPulse]           = useState([40, 70, 45, 90, 65, 100, 50, 80, 60, 85]);
-  const [time, setTime]             = useState(new Date());
+  const [pulse, setPulse]         = useState([40, 70, 45, 90, 65, 100, 50, 80, 60, 85]);
+  const [time, setTime]           = useState(new Date());
   const [vaultCount, setVaultCount] = useState(0);
-  const [recentItems, setRecentItems] = useState<VaultItem[]>([]);
-  const [typedGreeting, setTypedGreeting] = useState('');
   const [displayCount, setDisplayCount] = useState(0);
+  const [recentItems, setRecentItems]   = useState<VaultItem[]>([]);
+  const [typedGreeting, setTypedGreeting] = useState('');
+  const [activeAgents, setActiveAgents]   = useState<AgentId[]>([]);
 
   const tipIndex = new Date().getDay();
   const tip = DAILY_TIPS[tipIndex];
 
-  // ── Boot animations ──────────────────────────────────────────
   useEffect(() => {
-    // Fade + slide in
     Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 800, useNativeDriver: false }),
-      Animated.timing(slideAnim, { toValue: 0, duration: 700, easing: Easing.out(Easing.quad), useNativeDriver: false }),
+      Animated.timing(fadeAnim,  { toValue: 1, duration: 700, useNativeDriver: false }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 600, easing: Easing.out(Easing.quad), useNativeDriver: false }),
     ]).start();
 
-    // Pulsing status dot
     Animated.loop(
       Animated.sequence([
         Animated.timing(dotAnim, { toValue: 1, duration: 900, useNativeDriver: false }),
         Animated.timing(dotAnim, { toValue: 0.2, duration: 900, useNativeDriver: false }),
       ])
     ).start();
-
-    // Neural pulse bars
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1, duration: 1800, useNativeDriver: false }),
-        Animated.timing(pulseAnim, { toValue: 0, duration: 1800, useNativeDriver: false }),
-      ])
-    ).start();
   }, []);
 
-  // ── Typing effect for greeting ───────────────────────────────
   useEffect(() => {
     const greeting = getGreeting() + ', Creator';
     let idx = 0;
@@ -105,11 +81,10 @@ export default function HomeScreen({
       idx++;
       setTypedGreeting(greeting.slice(0, idx));
       if (idx >= greeting.length) clearInterval(iv);
-    }, 48);
+    }, 45);
     return () => clearInterval(iv);
   }, []);
 
-  // ── Live clock + pulse bars ──────────────────────────────────
   useEffect(() => {
     const iv = setInterval(() => {
       setTime(new Date());
@@ -118,7 +93,6 @@ export default function HomeScreen({
     return () => clearInterval(iv);
   }, []);
 
-  // ── Load vault data ──────────────────────────────────────────
   useEffect(() => {
     const load = async () => {
       try {
@@ -126,7 +100,6 @@ export default function HomeScreen({
         const items: VaultItem[] = raw ? JSON.parse(raw) : [];
         setVaultCount(items.length);
         setRecentItems(items.slice(0, 3));
-        // Count-up animation for vault count
         let n = 0;
         const target = items.length;
         if (target === 0) return;
@@ -139,28 +112,35 @@ export default function HomeScreen({
       } catch {}
     };
     load();
+    getActiveAgents().then(setActiveAgents);
   }, []);
 
-  // ── Premium bg style ─────────────────────────────────────────
+  const dotOpacity = dotAnim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] });
+
+  // Background
   const bgStyle: object = Platform.OS === 'web'
-    ? {
-        background: theme === 'arctic'
-          ? 'linear-gradient(160deg, #e8edf4 0%, #f5f7fa 50%, #eaeff5 100%)'
-          : theme === 'cyber'
-            ? 'linear-gradient(160deg, #020209 0%, #060618 40%, #020209 100%)'
-            : theme === 'ocean'
-              ? 'linear-gradient(160deg, #010a14 0%, #021828 40%, #010a14 100%)'
-              : theme === 'inferno'
-                ? 'linear-gradient(160deg, #0a0100 0%, #160500 40%, #0a0100 100%)'
-                : 'linear-gradient(160deg, #060012 0%, #100028 40%, #060012 100%)',
-      }
+    ? ({
+        background: isDark
+          ? theme === 'cyber'    ? 'linear-gradient(160deg,#020209 0%,#060618 100%)'
+          : theme === 'ocean'   ? 'linear-gradient(160deg,#010a14 0%,#021828 100%)'
+          : theme === 'inferno' ? 'linear-gradient(160deg,#0a0100 0%,#160500 100%)'
+          :                       'linear-gradient(160deg,#060012 0%,#100028 100%)'
+          : 'linear-gradient(160deg,#F8FAFC 0%,#F0F4FF 60%,#FAF5FF 100%)',
+      } as object)
     : { backgroundColor: T.bg };
 
-  const dotOpacity = dotAnim.interpolate({ inputRange: [0, 1], outputRange: [0.2, 1] });
+  const cardBg  = isDark ? T.surface : '#FFFFFF';
+  const cardBorder = isDark ? T.card : '#E2E8F0';
+  const textSub = isDark ? T.muted : '#94A3B8';
+
+  const shadow = (color: string): object =>
+    Platform.OS === 'web'
+      ? { boxShadow: `0 4px 16px ${color}22` } as object
+      : { shadowColor: color, shadowOpacity: 0.1, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 4 };
 
   return (
     <Animated.ScrollView
-      style={[{ flex: 1 }, bgStyle as object]}
+      style={[{ flex: 1 }, bgStyle]}
       contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
     >
       <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
@@ -168,158 +148,166 @@ export default function HomeScreen({
         {/* ── Header ─────────────────────────────────────────── */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
           <View>
-            <Text style={{ color: T.muted, fontSize: 9, fontWeight: '900', letterSpacing: 3, marginBottom: 4 }}>
-              NEURAL CORE v2.5
+            <Text style={{ color: textSub, fontSize: 9, fontWeight: '700', letterSpacing: 3, marginBottom: 4 }}>
+              NEURAL CORE v3.0
             </Text>
-            <Text style={{ color: T.text, fontSize: 26, fontWeight: '900', letterSpacing: -0.5 }}>
-              NEXA <Text style={{ color: T.accent }}>AI</Text>
+            <Text style={{ color: T.text, fontSize: 28, fontWeight: '800', letterSpacing: -1 }}>
+              Nexa <Text style={{ color: '#6C47FF' }}>AI</Text>
             </Text>
           </View>
           <View style={{ alignItems: 'flex-end', gap: 6 }}>
-            {/* Live status badge */}
             <View style={{
               flexDirection: 'row', alignItems: 'center', gap: 6,
-              backgroundColor: T.accent + '15', borderRadius: 20,
-              paddingHorizontal: 10, paddingVertical: 5,
-              borderWidth: 1, borderColor: T.accent + '40',
+              backgroundColor: '#6C47FF14', borderRadius: 20,
+              paddingHorizontal: 10, paddingVertical: 6,
+              borderWidth: 1, borderColor: '#6C47FF30',
             }}>
-              <Animated.View style={{
-                width: 6, height: 6, borderRadius: 3,
-                backgroundColor: T.accent, opacity: dotOpacity,
-              }} />
-              <Text style={{ color: T.accent, fontSize: 8, fontWeight: '900', letterSpacing: 1 }}>GEMINI LIVE</Text>
+              <Animated.View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#6C47FF', opacity: dotOpacity }} />
+              <Text style={{ color: '#6C47FF', fontSize: 9, fontWeight: '700', letterSpacing: 0.5 }}>LIVE</Text>
             </View>
-            {/* System clock */}
-            <Text style={{ color: T.muted, fontSize: 11, fontWeight: '700', letterSpacing: 1 }}>
+            <Text style={{ color: textSub, fontSize: 11, fontWeight: '600' }}>
               {time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
             </Text>
           </View>
         </View>
 
-        {/* Greeting + date */}
-        <View style={{ marginBottom: 22 }}>
-          <Text style={{ color: T.text, fontSize: 18, fontWeight: '700', marginBottom: 3, letterSpacing: -0.3 }}>
+        {/* Greeting */}
+        <View style={{ marginBottom: 24 }}>
+          <Text style={{ color: T.text, fontSize: 19, fontWeight: '700', marginBottom: 3, letterSpacing: -0.3 }}>
             {typedGreeting}
-            <Text style={{ color: T.accent }}>█</Text>
+            <Text style={{ color: '#6C47FF' }}>█</Text>
           </Text>
-          <Text style={{ color: T.muted, fontSize: 10, letterSpacing: 1 }}>{formatDate()}</Text>
+          <Text style={{ color: textSub, fontSize: 11, letterSpacing: 0.5 }}>{formatDate()}</Text>
+        </View>
+
+        {/* ── Active Agents Bar ───────────────────────────────── */}
+        <View style={{
+          backgroundColor: cardBg, borderRadius: 16, padding: 14, marginBottom: 18,
+          borderWidth: 1, borderColor: cardBorder,
+          ...shadow('#6C47FF'),
+        }}>
+          <Text style={{ color: textSub, fontSize: 9, fontWeight: '700', letterSpacing: 2, marginBottom: 10 }}>
+            🤖 ACTIVE AI AGENTS
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {(['gemini', 'groq', 'samba'] as AgentId[]).map(id => {
+              const meta = AGENT_META[id];
+              const isActive = activeAgents.includes(id);
+              return (
+                <View key={id} style={{
+                  flex: 1, borderRadius: 12, padding: 10, alignItems: 'center', gap: 4,
+                  backgroundColor: isActive ? meta.color + '12' : (isDark ? T.card : '#F8FAFC'),
+                  borderWidth: 1.5,
+                  borderColor: isActive ? meta.color + '40' : cardBorder,
+                }}>
+                  <Text style={{ fontSize: 14, color: isActive ? meta.color : textSub, fontWeight: '800' }}>
+                    {meta.badge}
+                  </Text>
+                  <Text style={{ color: isActive ? meta.color : textSub, fontSize: 9, fontWeight: '700', textAlign: 'center' }}>
+                    {meta.label}
+                  </Text>
+                  <View style={{
+                    paddingHorizontal: 6, paddingVertical: 2, borderRadius: 5,
+                    backgroundColor: isActive ? meta.color + '18' : 'transparent',
+                  }}>
+                    <Text style={{ color: isActive ? meta.color : textSub, fontSize: 8, fontWeight: '700' }}>
+                      {isActive ? meta.speed : 'No Key'}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
         </View>
 
         {/* ── Theme Switcher ──────────────────────────────────── */}
-        <View style={{ marginBottom: 22 }}>
-          <Text style={{ color: T.muted, fontSize: 8, fontWeight: '900', letterSpacing: 2, marginBottom: 10 }}>
-            THEME ENGINE
+        <View style={{ marginBottom: 18 }}>
+          <Text style={{ color: textSub, fontSize: 9, fontWeight: '700', letterSpacing: 2, marginBottom: 10 }}>
+            THEME
           </Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={{ flexDirection: 'row', gap: 8 }}>
-              {(Object.keys(THEMES) as ThemeKey[]).map(k => (
-                <TouchableOpacity
-                  key={k}
-                  onPress={() => setTheme(k)}
-                  style={{
-                    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
-                    borderWidth: theme === k ? 1.5 : 1,
-                    borderColor: theme === k ? THEMES[k].accent : THEMES[k].muted + '60',
-                    backgroundColor: theme === k ? THEMES[k].accent + '18' : THEMES[k].surface,
-                    ...(theme === k ? glow(THEMES[k].accent, 10) : {}),
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <Text style={{ color: theme === k ? THEMES[k].accent : T.muted, fontSize: 11, fontWeight: '900' }}>
-                    {THEMES[k].name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+              {(Object.keys(THEMES) as ThemeKey[]).map(k => {
+                const active = theme === k;
+                const themeAccent = THEMES[k].accent;
+                return (
+                  <TouchableOpacity
+                    key={k} onPress={() => setTheme(k)}
+                    style={{
+                      paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
+                      borderWidth: active ? 1.5 : 1,
+                      borderColor: active ? themeAccent : cardBorder,
+                      backgroundColor: active ? themeAccent + '18' : cardBg,
+                      ...(active && Platform.OS === 'web' ? { boxShadow: `0 0 10px ${themeAccent}40` } as object : {}),
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={{ color: active ? themeAccent : textSub, fontSize: 11, fontWeight: '700' }}>
+                      {THEMES[k].name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </ScrollView>
-        </View>
-
-        {/* ── Neural Pulse ───────────────────────────────────── */}
-        <View style={[{
-          borderRadius: 20, padding: 18, marginBottom: 18,
-          borderWidth: 1, overflow: 'hidden',
-        }, glassSurface(T.accent), Platform.OS !== 'web' && { backgroundColor: T.surface }]}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-            <Text style={{ color: T.accent, fontSize: 9, fontWeight: '900', letterSpacing: 2 }}>⚡ NEURAL PULSE</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Animated.View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: T.accent, opacity: dotOpacity }} />
-              <Text style={{ color: T.muted, fontSize: 8 }}>LIVE</Text>
-            </View>
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-end', height: 56, gap: 4 }}>
-            {pulse.map((h, i) => (
-              <View
-                key={i}
-                style={{
-                  flex: 1,
-                  height: (h / 100) * 56,
-                  borderRadius: 4,
-                  backgroundColor: T.accent,
-                  opacity: 0.3 + (i / pulse.length) * 0.7,
-                }}
-              />
-            ))}
-          </View>
         </View>
 
         {/* ── Stats Grid ─────────────────────────────────────── */}
         <View style={{ flexDirection: 'row', gap: 10, marginBottom: 18 }}>
           {[
-            { label: 'VAULT ITEMS', value: displayCount.toString(), icon: '🗄️', color: T.accent },
-            { label: 'AI MODEL', value: '2.5F', icon: '🧠', color: '#9D4DFF' },
-            { label: 'PLATFORMS', value: '6', icon: '🌐', color: '#1DA1F2' },
+            { label: 'VAULT', value: displayCount.toString(), icon: '🗄️', color: '#6C47FF' },
+            { label: 'MODEL',  value: '2.5F',                 icon: '🧠', color: '#F43F5E' },
+            { label: 'TARGETS', value: '6',                   icon: '🎯', color: '#0EA5E9' },
           ].map(s => (
-            <View
-              key={s.label}
-              style={[{
-                flex: 1, borderRadius: 16, padding: 14,
-                borderWidth: 1, alignItems: 'center', gap: 4,
-              }, glassSurface(s.color), Platform.OS !== 'web' && { backgroundColor: T.surface }]}
-            >
-              <Text style={{ fontSize: 18 }}>{s.icon}</Text>
-              <Text style={{ color: s.color, fontSize: 20, fontWeight: '900' }}>{s.value}</Text>
-              <Text style={{ color: T.muted, fontSize: 6, fontWeight: '900', letterSpacing: 1, textAlign: 'center' }}>
-                {s.label}
-              </Text>
-            </View>
-          ))}
-        </View>
-
-        {/* ── System Status Badges ────────────────────────────── */}
-        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 20 }}>
-          {[
-            { label: 'GEMINI 2.5 ONLINE', color: '#00FF9D' },
-            { label: 'VAULT ACTIVE', color: T.accent },
-            { label: 'ALL SYSTEMS GO', color: '#1DA1F2' },
-          ].map(b => (
-            <View key={b.label} style={{
-              flexDirection: 'row', alignItems: 'center', gap: 5,
-              backgroundColor: b.color + '12', borderRadius: 20,
-              paddingHorizontal: 8, paddingVertical: 5,
-              borderWidth: 1, borderColor: b.color + '30',
+            <View key={s.label} style={{
+              flex: 1, borderRadius: 16, padding: 14,
+              borderWidth: 1, alignItems: 'center', gap: 4,
+              backgroundColor: cardBg, borderColor: cardBorder,
+              ...shadow(s.color),
             }}>
-              <Animated.View style={{
-                width: 5, height: 5, borderRadius: 2.5,
-                backgroundColor: b.color, opacity: dotOpacity,
-              }} />
-              <Text style={{ color: b.color, fontSize: 7, fontWeight: '900', letterSpacing: 0.5 }}>{b.label}</Text>
+              <Text style={{ fontSize: 20 }}>{s.icon}</Text>
+              <Text style={{ color: s.color, fontSize: 22, fontWeight: '800' }}>{s.value}</Text>
+              <Text style={{ color: textSub, fontSize: 7, fontWeight: '700', letterSpacing: 1 }}>{s.label}</Text>
             </View>
           ))}
         </View>
 
-        {/* ── Daily AI Marketing Tip ──────────────────────────── */}
-        <View style={[{
-          borderRadius: 20, padding: 18, marginBottom: 18,
-          borderWidth: 1, borderLeftWidth: 3, borderLeftColor: T.accent,
-        }, glassSurface(T.accent), Platform.OS !== 'web' && { backgroundColor: T.surface }]}>
+        {/* ── Neural Pulse ───────────────────────────────────── */}
+        <View style={{
+          backgroundColor: cardBg, borderRadius: 18, padding: 16, marginBottom: 18,
+          borderWidth: 1, borderColor: cardBorder, ...shadow('#6C47FF'),
+        }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <Text style={{ color: '#6C47FF', fontSize: 9, fontWeight: '700', letterSpacing: 2 }}>⚡ NEURAL PULSE</Text>
+            <Animated.View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Animated.View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: '#10B981', opacity: dotOpacity }} />
+              <Text style={{ color: '#10B981', fontSize: 8, fontWeight: '700' }}>LIVE</Text>
+            </Animated.View>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-end', height: 50, gap: 4 }}>
+            {pulse.map((h, i) => (
+              <View key={i} style={{
+                flex: 1, height: (h / 100) * 50, borderRadius: 4,
+                backgroundColor: '#6C47FF',
+                opacity: 0.25 + (i / pulse.length) * 0.75,
+              }} />
+            ))}
+          </View>
+        </View>
+
+        {/* ── Daily AI Tip ────────────────────────────────────── */}
+        <View style={{
+          backgroundColor: cardBg, borderRadius: 18, padding: 18, marginBottom: 18,
+          borderWidth: 1, borderColor: cardBorder,
+          borderLeftWidth: 4, borderLeftColor: '#6C47FF',
+          ...shadow('#6C47FF'),
+        }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-            <Text style={{ fontSize: 18 }}>{tip.icon}</Text>
+            <Text style={{ fontSize: 20 }}>{tip.icon}</Text>
             <View>
-              <Text style={{ color: T.accent, fontSize: 8, fontWeight: '900', letterSpacing: 2 }}>
-                AI TIP OF THE DAY
-              </Text>
-              <Text style={{ color: T.muted, fontSize: 7, marginTop: 1 }}>
-                {new Date().toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase()} INSIGHT
+              <Text style={{ color: '#6C47FF', fontSize: 9, fontWeight: '700', letterSpacing: 2 }}>AI TIP OF THE DAY</Text>
+              <Text style={{ color: textSub, fontSize: 8, marginTop: 1 }}>
+                {new Date().toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase()}
               </Text>
             </View>
           </View>
@@ -330,42 +318,35 @@ export default function HomeScreen({
 
         {/* ── Recent Generations ──────────────────────────────── */}
         {recentItems.length > 0 && (
-          <View style={{ marginBottom: 20 }}>
+          <View style={{ marginBottom: 18 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <Text style={{ color: T.muted, fontSize: 8, fontWeight: '900', letterSpacing: 2 }}>
-                RECENT GENERATIONS
-              </Text>
+              <Text style={{ color: textSub, fontSize: 9, fontWeight: '700', letterSpacing: 2 }}>RECENT GENERATIONS</Text>
               <TouchableOpacity onPress={() => setTab?.('vault')}>
-                <Text style={{ color: T.accent, fontSize: 8, fontWeight: '900', letterSpacing: 1 }}>
-                  VIEW ALL ▸
-                </Text>
+                <Text style={{ color: '#6C47FF', fontSize: 9, fontWeight: '700', letterSpacing: 1 }}>VIEW ALL →</Text>
               </TouchableOpacity>
             </View>
             <View style={{ gap: 8 }}>
               {recentItems.map((item, i) => (
-                <View
-                  key={item.id}
-                  style={[{
-                    borderRadius: 14, padding: 14,
-                    borderWidth: 1, flexDirection: 'row', gap: 12, alignItems: 'center',
-                  }, glassSurface(T.accent), Platform.OS !== 'web' && { backgroundColor: T.surface }]}
-                >
+                <View key={item.id} style={{
+                  backgroundColor: cardBg, borderRadius: 14, padding: 14,
+                  borderWidth: 1, borderColor: cardBorder,
+                  flexDirection: 'row', gap: 12, alignItems: 'center',
+                  ...shadow('#6C47FF'),
+                }}>
                   <View style={{
                     width: 36, height: 36, borderRadius: 10,
-                    backgroundColor: T.accent + '20', alignItems: 'center', justifyContent: 'center',
-                    borderWidth: 1, borderColor: T.accent + '40',
+                    backgroundColor: '#6C47FF14', alignItems: 'center', justifyContent: 'center',
+                    borderWidth: 1, borderColor: '#6C47FF25',
                   }}>
-                    <Text style={{ color: T.accent, fontSize: 11, fontWeight: '900' }}>#{i + 1}</Text>
+                    <Text style={{ color: '#6C47FF', fontSize: 12, fontWeight: '800' }}>#{i + 1}</Text>
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={{ color: T.text, fontSize: 12, fontWeight: '700', marginBottom: 3 }} numberOfLines={1}>
+                    <Text style={{ color: T.text, fontSize: 13, fontWeight: '700', marginBottom: 3 }} numberOfLines={1}>
                       {item.title}
                     </Text>
-                    <View style={{ flexDirection: 'row', gap: 8 }}>
-                      <Text style={{ color: T.muted, fontSize: 9 }}>{item.platform}</Text>
-                      <Text style={{ color: T.muted, fontSize: 9 }}>·</Text>
-                      <Text style={{ color: T.muted, fontSize: 9 }}>{item.date}</Text>
-                    </View>
+                    <Text style={{ color: textSub, fontSize: 10 }}>
+                      {item.platform} · {item.date}
+                    </Text>
                   </View>
                 </View>
               ))}
@@ -374,30 +355,28 @@ export default function HomeScreen({
         )}
 
         {/* ── Quick Actions ───────────────────────────────────── */}
-        <View style={{ marginBottom: 8 }}>
-          <Text style={{ color: T.muted, fontSize: 8, fontWeight: '900', letterSpacing: 2, marginBottom: 12 }}>
+        <View>
+          <Text style={{ color: textSub, fontSize: 9, fontWeight: '700', letterSpacing: 2, marginBottom: 12 }}>
             QUICK ACTIONS
           </Text>
           <View style={{ flexDirection: 'row', gap: 10 }}>
             {[
-              { icon: '🔥', label: 'FORGE\nCONTENT', tab: 'forge', color: T.accent },
-              { icon: '🧠', label: 'ASK\nINTEL', tab: 'intel', color: '#9D4DFF' },
-              { icon: '🗄️', label: 'OPEN\nVAULT', tab: 'vault', color: '#1DA1F2' },
+              { icon: '🔥', label: 'FORGE',  tab: 'forge', color: '#F43F5E' },
+              { icon: '🧠', label: 'INTEL',  tab: 'intel', color: '#6C47FF' },
+              { icon: '🗄️', label: 'VAULT',  tab: 'vault', color: '#0EA5E9' },
             ].map(a => (
               <TouchableOpacity
-                key={a.tab}
-                onPress={() => setTab?.(a.tab)}
-                style={[{
-                  flex: 1, borderRadius: 16, paddingVertical: 16,
-                  alignItems: 'center', borderWidth: 1, gap: 8,
-                  ...(setTab ? glow(a.color, 8) : {}),
-                }, glassSurface(a.color), Platform.OS !== 'web' && { backgroundColor: T.surface }]}
+                key={a.tab} onPress={() => setTab?.(a.tab)}
+                style={{
+                  flex: 1, borderRadius: 16, paddingVertical: 18,
+                  alignItems: 'center', borderWidth: 1.5, gap: 8,
+                  backgroundColor: cardBg, borderColor: a.color + '35',
+                  ...shadow(a.color),
+                }}
                 activeOpacity={0.8}
               >
-                <Text style={{ fontSize: 22 }}>{a.icon}</Text>
-                <Text style={{ color: a.color, fontSize: 8, fontWeight: '900', letterSpacing: 1, textAlign: 'center' }}>
-                  {a.label}
-                </Text>
+                <Text style={{ fontSize: 24 }}>{a.icon}</Text>
+                <Text style={{ color: a.color, fontSize: 10, fontWeight: '700', letterSpacing: 1 }}>{a.label}</Text>
               </TouchableOpacity>
             ))}
           </View>

@@ -1,48 +1,38 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getAgentKey, groqChat, groqStream, sambaChat } from './agents';
 
-// ── Key storage ────────────────────────────────────────────────
-export const GEMINI_KEY_STORAGE = 'nexa_api_key';
-
-const getKey = async (): Promise<string> => {
-  try {
-    const stored = await AsyncStorage.getItem(GEMINI_KEY_STORAGE);
-    if (stored?.trim()) return stored.trim();
-  } catch {}
-  return process.env.EXPO_PUBLIC_GEMINI_API_KEY || '';
-};
-
-const getGenAI = async (): Promise<GoogleGenerativeAI> => {
-  const key = await getKey();
-  return new GoogleGenerativeAI(key);
-};
+export { GEMINI_KEY_STORAGE } from './agents';
+export { testGeminiKey as testApiKey } from './agents';
 
 export const hasApiKey = async (): Promise<boolean> => {
-  const key = await getKey();
+  const key = await getAgentKey('gemini');
   return !!key;
 };
 
-export const testApiKey = async (key: string): Promise<boolean> => {
-  try {
-    const client = new GoogleGenerativeAI(key);
-    const model = client.getGenerativeModel({ model: 'gemini-2.5-flash' });
-    const result = await model.generateContent('Reply with the single word: ok');
-    return !!result.response.text();
-  } catch { return false; }
+const SYSTEM_PROMPT = `You are NEXA AI — an expert social media content strategist. You create viral content for Instagram, YouTube, Twitter/X, LinkedIn, TikTok and WhatsApp. Always be specific, creative and platform-optimized.`;
+const AUTOPILOT_SYSTEM_PROMPT = `You are NEXA AUTOPILOT — an elite autonomous viral marketing agency AI. You ONLY respond with valid JSON. No markdown fences, no explanation, no text outside of the JSON object. Your JSON must be parseable by JSON.parse().`;
+
+// ── Gemini helpers ─────────────────────────────────────────────
+const getGemini = async () => {
+  const key = await getAgentKey('gemini');
+  return new GoogleGenerativeAI(key);
 };
 
-// ── System prompts ─────────────────────────────────────────────
-const SYSTEM_PROMPT =
-  `You are NEXA AI — an expert social media content strategist. You create viral content for Instagram, YouTube, Twitter/X, LinkedIn, TikTok and WhatsApp. Always be specific, creative and platform-optimized.`;
-const AUTOPILOT_SYSTEM_PROMPT =
-  `You are NEXA AUTOPILOT — an elite autonomous viral marketing agency AI. You ONLY respond with valid JSON. No markdown fences, no explanation, no text outside of the JSON object. Your JSON must be parseable by JSON.parse().`;
-
-// ── Chat functions ─────────────────────────────────────────────
+// ── INTEL chat — Groq first (fastest), fallback to Gemini ──────
 export const sendMessage = async (
   prompt: string,
   history: { role: string; parts: { text: string }[] }[]
 ): Promise<string> => {
-  const genAI = await getGenAI();
+  const groqKey = await getAgentKey('groq');
+  if (groqKey) {
+    const messages = [
+      { role: 'system', content: SYSTEM_PROMPT },
+      ...history.map(h => ({ role: h.role === 'model' ? 'assistant' : h.role, content: h.parts[0].text })),
+      { role: 'user', content: prompt },
+    ];
+    return groqChat(groqKey, messages);
+  }
+  const genAI = await getGemini();
   const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash', systemInstruction: SYSTEM_PROMPT });
   const chat = model.startChat({ history });
   const result = await chat.sendMessage(prompt);
@@ -52,9 +42,22 @@ export const sendMessage = async (
 export const streamMessage = async (
   prompt: string,
   history: { role: string; parts: { text: string }[] }[],
-  onChunk: (chunk: string) => void
+  onChunk: (chunk: string) => void,
+  onAgentChange?: (agent: 'groq' | 'gemini') => void
 ): Promise<void> => {
-  const genAI = await getGenAI();
+  const groqKey = await getAgentKey('groq');
+  if (groqKey) {
+    onAgentChange?.('groq');
+    const messages = [
+      { role: 'system', content: SYSTEM_PROMPT },
+      ...history.map(h => ({ role: h.role === 'model' ? 'assistant' : h.role, content: h.parts[0].text })),
+      { role: 'user', content: prompt },
+    ];
+    await groqStream(groqKey, messages, onChunk);
+    return;
+  }
+  onAgentChange?.('gemini');
+  const genAI = await getGemini();
   const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash', systemInstruction: SYSTEM_PROMPT });
   const chat = model.startChat({ history });
   const result = await chat.sendMessageStream(prompt);
@@ -64,10 +67,11 @@ export const streamMessage = async (
   }
 };
 
+// ── Autopilot — Gemini (best structured JSON) ──────────────────
 export const sendAutopilotMessage = async (
   topic: string, platforms: string[], language: string, tone: string
 ): Promise<string> => {
-  const genAI = await getGenAI();
+  const genAI = await getGemini();
   const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash', systemInstruction: AUTOPILOT_SYSTEM_PROMPT });
   const prompt = `Generate a 3-day viral content strategy for topic: "${topic}" targeting platforms: ${platforms.join(', ')}.
 All post content must be written in ${language} with a ${tone} tone and style throughout.
@@ -95,99 +99,95 @@ Return ONLY this JSON (no markdown, no extra text):
   return result.response.text();
 };
 
+// ── Posting time — Groq or Gemini ─────────────────────────────
 export const getOptimalPostingTime = async (platform: string, topic: string): Promise<string> => {
-  const genAI = await getGenAI();
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash',
-    systemInstruction: 'You are a social media analytics expert. Give concise, data-driven posting time recommendations in 2-3 sentences.',
-  });
-  const result = await model.generateContent(
-    `Best day and time (with timezone) to post about "${topic}" on ${platform} for maximum viral reach in 2026. Be specific.`
-  );
+  const groqKey = await getAgentKey('groq');
+  if (groqKey) {
+    return groqChat(groqKey, [
+      { role: 'system', content: 'You are a social media analytics expert. Give concise, data-driven posting time recommendations in 2-3 sentences.' },
+      { role: 'user', content: `Best day and time (with timezone) to post about "${topic}" on ${platform} for maximum viral reach in 2026. Be specific.` },
+    ]);
+  }
+  const genAI = await getGemini();
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash', systemInstruction: 'You are a social media analytics expert. Give concise, data-driven posting time recommendations in 2-3 sentences.' });
+  const result = await model.generateContent(`Best day and time (with timezone) to post about "${topic}" on ${platform} for maximum viral reach in 2026. Be specific.`);
   return result.response.text();
 };
 
-export interface ABHooks {
-  hookA: string; angleA: string; hookB: string; angleB: string;
-}
+// ── A/B Hooks — Groq (fast) or Gemini ─────────────────────────
+export interface ABHooks { hookA: string; angleA: string; hookB: string; angleB: string; }
 export const generateABHooks = async (topic: string, platform: string, tone: string): Promise<ABHooks> => {
-  const genAI = await getGenAI();
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash',
-    systemInstruction: 'You are a viral hook copywriter. Respond ONLY with valid JSON. No markdown, no extra text.',
-  });
-  const result = await model.generateContent(
-    `Generate 2 competing viral hook variants for a ${platform} post about "${topic}" in a ${tone} tone. Each hook MUST use a different psychological trigger. Return ONLY this JSON:
-{"hookA":"<hook A>","angleA":"<trigger A — 2-3 words>","hookB":"<hook B>","angleB":"<trigger B — 2-3 words>"}`
-  );
-  const raw = result.response.text().replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
-  return JSON.parse(raw) as ABHooks;
+  const jsonPrompt = `Generate 2 competing viral hook variants for a ${platform} post about "${topic}" in a ${tone} tone. Each hook MUST use a different psychological trigger. Return ONLY this JSON:
+{"hookA":"<hook A>","angleA":"<trigger A — 2-3 words>","hookB":"<hook B>","angleB":"<trigger B — 2-3 words>"}`;
+  const groqKey = await getAgentKey('groq');
+  let raw: string;
+  if (groqKey) {
+    raw = await groqChat(groqKey, [
+      { role: 'system', content: 'You are a viral hook copywriter. Respond ONLY with valid JSON. No markdown, no extra text.' },
+      { role: 'user', content: jsonPrompt },
+    ]);
+  } else {
+    const genAI = await getGemini();
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash', systemInstruction: 'You are a viral hook copywriter. Respond ONLY with valid JSON. No markdown, no extra text.' });
+    raw = (await model.generateContent(jsonPrompt)).response.text();
+  }
+  return JSON.parse(raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim()) as ABHooks;
 };
 
-export interface ThreadTweet {
-  number: number; tweet: string; type: 'hook' | 'body' | 'cta';
-}
+// ── Thread Builder — SambaNova (long-form) or Gemini ──────────
+export interface ThreadTweet { number: number; tweet: string; type: 'hook' | 'body' | 'cta'; }
 export const generateViralThread = async (topic: string, tone: string, language: string): Promise<ThreadTweet[]> => {
-  const genAI = await getGenAI();
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash',
-    systemInstruction: 'You are an elite Twitter/X thread writer. Respond ONLY with a valid JSON array. No markdown, no extra text.',
-  });
-  const result = await model.generateContent(
-    `Write a 10-tweet viral Twitter/X thread about "${topic}" in ${language} with a ${tone} tone. Each tweet must be under 280 characters. Tweet 1 = irresistible hook. Tweets 2-9 = value/insights. Tweet 10 = powerful CTA + follow ask. Return ONLY a JSON array: [{"number":1,"tweet":"...","type":"hook"},...]`
-  );
-  const raw = result.response.text().replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
-  return JSON.parse(raw) as ThreadTweet[];
+  const jsonPrompt = `Write a 10-tweet viral Twitter/X thread about "${topic}" in ${language} with a ${tone} tone. Each tweet must be under 280 characters. Tweet 1 = irresistible hook. Tweets 2-9 = value/insights. Tweet 10 = powerful CTA + follow ask. Return ONLY a JSON array: [{"number":1,"tweet":"...","type":"hook"},...]`;
+  const sambaKey = await getAgentKey('samba');
+  let raw: string;
+  if (sambaKey) {
+    raw = await sambaChat(sambaKey, [
+      { role: 'system', content: 'You are an elite Twitter/X thread writer. Respond ONLY with a valid JSON array. No markdown, no extra text.' },
+      { role: 'user', content: jsonPrompt },
+    ]);
+  } else {
+    const genAI = await getGemini();
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash', systemInstruction: 'You are an elite Twitter/X thread writer. Respond ONLY with a valid JSON array. No markdown, no extra text.' });
+    raw = (await model.generateContent(jsonPrompt)).response.text();
+  }
+  return JSON.parse(raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim()) as ThreadTweet[];
 };
 
-export interface TrendingTopic {
-  topic: string; reason: string; best_platform: string; trend_score: number; angle: string;
-}
+// ── Trend Scout — Groq (fast) or Gemini ───────────────────────
+export interface TrendingTopic { topic: string; reason: string; best_platform: string; trend_score: number; angle: string; }
 export const getTrendingTopics = async (niche: string): Promise<TrendingTopic[]> => {
-  const genAI = await getGenAI();
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash',
-    systemInstruction: 'You are a viral trend intelligence analyst. Respond ONLY with a valid JSON array. No markdown, no extra text.',
-  });
-  const result = await model.generateContent(
-    `Generate exactly 5 ultra-viral, hyper-specific content topic ideas for the "${niche}" niche in 2026. Return ONLY this JSON array:
-[{"topic":"<topic>","reason":"<why viral — 1 sentence>","best_platform":"<Instagram/YouTube/Twitter/LinkedIn/TikTok/WhatsApp>","trend_score":<72-99>,"angle":"<Hot Take/Tutorial/Expose/Story/Controversy/Listicle/Challenge/Behind The Scenes>"}]`
-  );
-  const raw = result.response.text().replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
-  return JSON.parse(raw) as TrendingTopic[];
+  const jsonPrompt = `Generate exactly 5 ultra-viral, hyper-specific content topic ideas for the "${niche}" niche in 2026. Return ONLY this JSON array:
+[{"topic":"<topic>","reason":"<why viral — 1 sentence>","best_platform":"<Instagram/YouTube/Twitter/LinkedIn/TikTok/WhatsApp>","trend_score":<72-99>,"angle":"<Hot Take/Tutorial/Expose/Story/Controversy/Listicle/Challenge/Behind The Scenes>"}]`;
+  const groqKey = await getAgentKey('groq');
+  let raw: string;
+  if (groqKey) {
+    raw = await groqChat(groqKey, [
+      { role: 'system', content: 'You are a viral trend intelligence analyst. Respond ONLY with a valid JSON array. No markdown, no extra text.' },
+      { role: 'user', content: jsonPrompt },
+    ]);
+  } else {
+    const genAI = await getGemini();
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash', systemInstruction: 'You are a viral trend intelligence analyst. Respond ONLY with a valid JSON array. No markdown, no extra text.' });
+    raw = (await model.generateContent(jsonPrompt)).response.text();
+  }
+  return JSON.parse(raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim()) as TrendingTopic[];
 };
 
-// ── Brand Voice DNA ─────────────────────────────────────────────
+// ── Brand Voice DNA — Gemini (best analysis) ──────────────────
 export const BRAND_VOICE_KEY = 'nexa_brand_voice_dna';
-
 export interface BrandVoiceProfile {
   name: string; tone_fingerprint: string; vocabulary_style: string;
   sentence_rhythm: string; power_words: string[]; humor_level: string;
   cta_style: string; avoid_words: string[]; dna_summary: string;
 }
-
 export const analyzeBrandVoice = async (posts: string): Promise<BrandVoiceProfile> => {
-  const genAI = await getGenAI();
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash',
-    systemInstruction: 'You are a brand voice linguist and copywriter. Respond ONLY with valid JSON. No markdown, no extra text.',
-  });
+  const genAI = await getGemini();
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash', systemInstruction: 'You are a brand voice linguist and copywriter. Respond ONLY with valid JSON. No markdown, no extra text.' });
   const result = await model.generateContent(
     `Analyze these social media posts and extract a precise brand voice DNA fingerprint. Return ONLY this JSON:
-{
-  "name": "<auto-generated profile name based on detected style>",
-  "tone_fingerprint": "<core tone in 3-5 words>",
-  "vocabulary_style": "<vocabulary complexity and word choice description>",
-  "sentence_rhythm": "<sentence structure and pacing description>",
-  "power_words": ["<word1>","<word2>","<word3>","<word4>","<word5>"],
-  "humor_level": "<None/Subtle/Moderate/Heavy>",
-  "cta_style": "<how this creator drives action>",
-  "avoid_words": ["<word1>","<word2>","<word3>"],
-  "dna_summary": "<2-sentence summary of this creator's unique voice fingerprint>"
-}
+{"name":"<profile name>","tone_fingerprint":"<core tone in 3-5 words>","vocabulary_style":"<vocabulary description>","sentence_rhythm":"<rhythm description>","power_words":["w1","w2","w3","w4","w5"],"humor_level":"<None/Subtle/Moderate/Heavy>","cta_style":"<cta description>","avoid_words":["w1","w2","w3"],"dna_summary":"<2-sentence summary>"}
 
-Posts to analyze:
-${posts}`
+Posts to analyze:\n${posts}`
   );
   const raw = result.response.text().replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
   return JSON.parse(raw) as BrandVoiceProfile;
@@ -204,9 +204,9 @@ export const PLATFORMS = [
 ];
 
 export const getEngagementEstimate = (score: number) => {
-  if (score >= 90) return { views: '500K–2M',  likes: '50K–200K', shares: '20K–80K', comments: '5K–20K' };
-  if (score >= 80) return { views: '100K–500K', likes: '10K–50K', shares: '5K–20K',  comments: '1K–5K'  };
-  if (score >= 70) return { views: '30K–100K',  likes: '3K–10K',  shares: '1K–5K',   comments: '300–1K' };
-  if (score >= 60) return { views: '10K–30K',   likes: '1K–3K',   shares: '300–1K',  comments: '50–300' };
-  return                  { views: '1K–10K',    likes: '100–1K',  shares: '30–300',   comments: '10–100' };
+  if (score >= 90) return { views: '500K–2M',   likes: '50K–200K', shares: '20K–80K', comments: '5K–20K'  };
+  if (score >= 80) return { views: '100K–500K', likes: '10K–50K',  shares: '5K–20K',  comments: '1K–5K'   };
+  if (score >= 70) return { views: '30K–100K',  likes: '3K–10K',   shares: '1K–5K',   comments: '300–1K'  };
+  if (score >= 60) return { views: '10K–30K',   likes: '1K–3K',    shares: '300–1K',  comments: '50–300'  };
+  return                  { views: '1K–10K',    likes: '100–1K',   shares: '30–300',   comments: '10–100'  };
 };

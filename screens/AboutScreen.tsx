@@ -1,261 +1,219 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Linking, Platform } from 'react-native';
 import { THEMES, ThemeKey } from '../constants/themes';
 
-const ARCH_STATS = [
-  { label: 'RUNTIME',   value: 'Expo 54',      icon: '⚡' },
-  { label: 'AI ENGINE', value: 'Gemini 2.5',   icon: '🧠' },
-  { label: 'PLATFORMS', value: '6 Targets',    icon: '🎯' },
-  { label: 'VAULT',     value: 'AsyncStorage', icon: '🗄️' },
-];
-
-const LANGUAGES = [
-  { code: 'EN', name: 'English',  desc: 'Global Reach — Default mode for worldwide audience targeting' },
-  { code: 'HI', name: 'Hindi',    desc: 'भारत Market — 600M+ Hindi-speaking internet users' },
-  { code: 'ES', name: 'Spanish',  desc: 'Mercado Latino — 500M+ Spanish speakers across 20 countries' },
-  { code: 'HG', name: 'Hinglish', desc: "Gen-Z Blend — Urban India's viral language of choice" },
+const AGENTS = [
+  { badge: '✦', name: 'Gemini 2.5 Flash', role: 'Autopilot · Brand DNA · Visual prompts', color: '#6C47FF', speed: 'Fast' },
+  { badge: '⚡', name: 'Groq Llama 3.3',  role: 'Intel chat · Trend Scout · A/B Hooks',  color: '#F43F5E', speed: 'Fastest' },
+  { badge: '◆', name: 'SambaNova Llama', role: 'Thread Builder · Long-form content',      color: '#0EA5E9', speed: 'Faster' },
 ];
 
 const STACK = [
-  { name: 'React Native 0.81', role: 'Cross-platform UI core' },
-  { name: 'TypeScript 5.9',    role: 'Type-safe architecture' },
-  { name: 'Gemini 2.5 Flash',  role: 'Neural content engine' },
-  { name: 'AsyncStorage',      role: 'Local vault persistence' },
-  { name: 'React Native Web',  role: 'Browser rendering layer' },
+  { name: 'Expo SDK 54',          role: 'Cross-platform runtime'    },
+  { name: 'React Native 0.81',   role: 'Mobile UI core'            },
+  { name: 'TypeScript 5.9',      role: 'Type-safe architecture'    },
+  { name: 'Gemini 2.5 Flash',    role: 'Autopilot + Brand DNA'     },
+  { name: 'Groq Llama 3.3 70B', role: 'Ultra-fast streaming chat' },
+  { name: 'SambaNova Llama',     role: 'Long-form thread builder'  },
+  { name: 'AsyncStorage',        role: 'Local vault persistence'   },
+];
+
+const LANGUAGES = [
+  { code: 'EN', name: 'English',  desc: 'Global reach — default worldwide targeting' },
+  { code: 'HI', name: 'Hindi',    desc: 'भारत Market — 600M+ Hindi-speaking users' },
+  { code: 'ES', name: 'Spanish',  desc: 'Mercado Latino — 500M+ across 20 countries' },
+  { code: 'HG', name: 'Hinglish', desc: "Gen-Z Blend — Urban India's viral language" },
 ];
 
 export default function AboutScreen({ theme }: { theme: ThemeKey }) {
   const T = THEMES[theme];
-  const [githubGlow, setGithubGlow] = useState(false);
+  const isDark = T.isDark;
 
-  const glowStyle = Platform.OS === 'web'
-    ? { shadowColor: T.accent, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.9, shadowRadius: 16 }
-    : { elevation: 12, shadowColor: T.accent, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.9, shadowRadius: 16 };
+  const cardBg     = isDark ? T.surface : '#FFFFFF';
+  const cardBorder = isDark ? T.card    : '#E2E8F0';
+  const textSub    = isDark ? T.muted   : '#94A3B8';
+  const ACCENT     = '#6C47FF';
 
-  const softGlow = Platform.OS === 'web'
-    ? { shadowColor: T.accent, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.3, shadowRadius: 8 }
-    : {};
+  const shadow = (color = '#6C47FF'): object =>
+    Platform.OS === 'web'
+      ? { boxShadow: `0 4px 16px ${color}18` } as object
+      : { shadowColor: color, shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 3 };
 
-  const openLink = (url: string) => Linking.openURL(url).catch(() => {});
+  const bgStyle: object = Platform.OS === 'web'
+    ? ({
+        background: isDark
+          ? `linear-gradient(160deg, ${T.bg} 0%, ${T.grad} 100%)`
+          : 'linear-gradient(160deg, #F8FAFC 0%, #F0F4FF 100%)',
+      } as object)
+    : { backgroundColor: T.bg };
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: T.bg }} contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
+    <ScrollView style={[{ flex: 1 }, bgStyle]} contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
 
-      {/* ── Developer Profile Card ── */}
-      <View style={{
-        backgroundColor: T.surface, borderRadius: 20, padding: 20, marginBottom: 28,
-        borderWidth: 1.5, borderColor: T.accent + '60',
-        ...glowStyle,
-      }}>
-        {/* Top row: avatar + name */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 18 }}>
-          {/* Avatar */}
-          <View style={{
-            width: 64, height: 64, borderRadius: 20,
-            backgroundColor: T.accent + '20',
-            borderWidth: 2, borderColor: T.accent,
-            alignItems: 'center', justifyContent: 'center',
-            ...glowStyle,
-          }}>
-            <Text style={{ color: T.accent, fontSize: 22, fontWeight: '900' }}>AH</Text>
-          </View>
-          {/* Name + role */}
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: T.text, fontSize: 18, fontWeight: '900', letterSpacing: 0.5 }}>
-              Adil Hussain
-            </Text>
-            <View style={{
-              marginTop: 5, flexDirection: 'row', alignItems: 'center', gap: 6,
-              backgroundColor: T.accent + '15', borderRadius: 6,
-              paddingHorizontal: 8, paddingVertical: 3,
-              borderWidth: 1, borderColor: T.accent + '40', alignSelf: 'flex-start',
-            }}>
-              <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: T.accent }} />
-              <Text style={{ color: T.accent, fontSize: 8, fontWeight: '900', letterSpacing: 2 }}>
-                CREATOR & DEVELOPER
-              </Text>
-            </View>
-            <Text style={{ color: T.muted, fontSize: 9, marginTop: 6, letterSpacing: 1 }}>
-              NEXA PRO — AUTONOMOUS MARKETING AI
-            </Text>
-          </View>
-        </View>
-
-        {/* Divider */}
-        <View style={{ height: 1, backgroundColor: T.card, marginBottom: 16 }} />
-
-        {/* Contact links */}
-        <View style={{ gap: 10 }}>
-          {/* Email */}
-          <TouchableOpacity
-            onPress={() => openLink('mailto:adilhusain3176@gmail.com')}
-            style={{
-              flexDirection: 'row', alignItems: 'center', gap: 12,
-              backgroundColor: T.bg, borderRadius: 12, padding: 12,
-              borderWidth: 1, borderColor: T.card,
-            }}
-            activeOpacity={0.75}
-          >
-            <View style={{
-              width: 36, height: 36, borderRadius: 10,
-              backgroundColor: '#EA4335' + '20',
-              borderWidth: 1, borderColor: '#EA4335' + '40',
-              alignItems: 'center', justifyContent: 'center',
-            }}>
-              <Text style={{ fontSize: 16 }}>📧</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: T.muted, fontSize: 8, fontWeight: '900', letterSpacing: 1 }}>EMAIL</Text>
-              <Text style={{ color: T.text, fontSize: 12, fontWeight: '700', marginTop: 2 }}>
-                adilhusain3176@gmail.com
-              </Text>
-            </View>
-            <Text style={{ color: T.muted, fontSize: 14 }}>↗</Text>
-          </TouchableOpacity>
-
-          {/* Twitter/X */}
-          <TouchableOpacity
-            onPress={() => openLink('https://twitter.com/Husain3413')}
-            style={{
-              flexDirection: 'row', alignItems: 'center', gap: 12,
-              backgroundColor: T.bg, borderRadius: 12, padding: 12,
-              borderWidth: 1, borderColor: T.card,
-            }}
-            activeOpacity={0.75}
-          >
-            <View style={{
-              width: 36, height: 36, borderRadius: 10,
-              backgroundColor: '#1DA1F2' + '20',
-              borderWidth: 1, borderColor: '#1DA1F2' + '40',
-              alignItems: 'center', justifyContent: 'center',
-            }}>
-              <Text style={{ fontSize: 16 }}>🐦</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: T.muted, fontSize: 8, fontWeight: '900', letterSpacing: 1 }}>X (TWITTER)</Text>
-              <Text style={{ color: '#1DA1F2', fontSize: 12, fontWeight: '700', marginTop: 2 }}>@Husain3413</Text>
-            </View>
-            <Text style={{ color: T.muted, fontSize: 14 }}>↗</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* ── Header ── */}
-      <View style={{ marginBottom: 28 }}>
-        <Text style={{ color: T.muted, fontSize: 9, fontWeight: '900', letterSpacing: 3, marginBottom: 6 }}>
-          ◈ CREATOR DOSSIER
-        </Text>
-        <Text style={{ color: T.text, fontSize: 26, fontWeight: '900', letterSpacing: 1 }}>
-          NEXA <Text style={{ color: T.accent }}>PRO</Text>
+      {/* Header */}
+      <View style={{ marginBottom: 24 }}>
+        <Text style={{ color: textSub, fontSize: 9, fontWeight: '700', letterSpacing: 3, marginBottom: 6 }}>◈ ABOUT</Text>
+        <Text style={{ color: T.text, fontSize: 28, fontWeight: '800', letterSpacing: -1 }}>
+          Nexa <Text style={{ color: ACCENT }}>Pro</Text>
         </Text>
         <View style={{
-          marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 8,
-          backgroundColor: T.accent + '15', borderRadius: 8,
-          paddingHorizontal: 10, paddingVertical: 6,
-          borderWidth: 1, borderColor: T.accent + '40', alignSelf: 'flex-start',
+          marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 6,
+          backgroundColor: ACCENT + '14', borderRadius: 8,
+          paddingHorizontal: 10, paddingVertical: 5,
+          borderWidth: 1, borderColor: ACCENT + '30', alignSelf: 'flex-start',
         }}>
-          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: T.accent }} />
-          <Text style={{ color: T.accent, fontSize: 9, fontWeight: '900', letterSpacing: 2 }}>
-            AUTONOMOUS MARKETING SYSTEM v3.0
+          <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: ACCENT }} />
+          <Text style={{ color: ACCENT, fontSize: 9, fontWeight: '700', letterSpacing: 2 }}>
+            MULTI-AGENT MARKETING AI v3.0
           </Text>
         </View>
       </View>
 
-      {/* ── System Architecture ── */}
-      <View style={{ marginBottom: 24 }}>
-        <Text style={{ color: T.muted, fontSize: 9, fontWeight: '900', letterSpacing: 3, marginBottom: 14 }}>
-          ▸ SYSTEM ARCHITECTURE
-        </Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-          {ARCH_STATS.map(s => (
-            <View key={s.label} style={{
-              flex: 1, minWidth: '44%',
-              backgroundColor: T.surface, borderRadius: 14, padding: 14,
-              borderWidth: 1, borderColor: T.card, alignItems: 'center',
-              ...softGlow,
+      {/* Developer card */}
+      <View style={{
+        backgroundColor: cardBg, borderRadius: 20, padding: 18, marginBottom: 20,
+        borderWidth: 1.5, borderColor: ACCENT + '35', ...shadow(ACCENT),
+      }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 16 }}>
+          <View style={{
+            width: 56, height: 56, borderRadius: 16,
+            backgroundColor: ACCENT + '18', borderWidth: 2, borderColor: ACCENT + '40',
+            alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Text style={{ color: ACCENT, fontSize: 18, fontWeight: '800' }}>AH</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: T.text, fontSize: 17, fontWeight: '800' }}>Adil Hussain</Text>
+            <View style={{
+              marginTop: 4, flexDirection: 'row', alignItems: 'center', gap: 5,
+              backgroundColor: ACCENT + '14', borderRadius: 6,
+              paddingHorizontal: 8, paddingVertical: 3,
+              borderWidth: 1, borderColor: ACCENT + '30', alignSelf: 'flex-start',
             }}>
-              <Text style={{ fontSize: 22, marginBottom: 6 }}>{s.icon}</Text>
-              <Text style={{ color: T.accent, fontSize: 13, fontWeight: '900' }}>{s.value}</Text>
-              <Text style={{ color: T.muted, fontSize: 8, fontWeight: '900', marginTop: 4, letterSpacing: 1 }}>
-                {s.label}
-              </Text>
+              <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: ACCENT }} />
+              <Text style={{ color: ACCENT, fontSize: 8, fontWeight: '700', letterSpacing: 1.5 }}>CREATOR & DEVELOPER</Text>
             </View>
-          ))}
+          </View>
         </View>
-      </View>
-
-      {/* ── Multi-Language Matrix ── */}
-      <View style={{ marginBottom: 24 }}>
-        <Text style={{ color: T.muted, fontSize: 9, fontWeight: '900', letterSpacing: 3, marginBottom: 14 }}>
-          ▸ MULTI-LANGUAGE MATRIX
-        </Text>
-        <View style={{ gap: 10 }}>
-          {LANGUAGES.map(lang => (
-            <View key={lang.code} style={{
-              backgroundColor: T.surface, borderRadius: 14, padding: 14,
-              borderWidth: 1, borderColor: T.card, flexDirection: 'row', gap: 14, alignItems: 'center',
-            }}>
+        <View style={{ height: 1, backgroundColor: cardBorder, marginBottom: 14 }} />
+        <View style={{ gap: 8 }}>
+          {[
+            { icon: '📧', label: 'EMAIL', value: 'adilhusain3176@gmail.com', url: 'mailto:adilhusain3176@gmail.com', color: '#EA4335' },
+            { icon: '🐦', label: 'X (TWITTER)', value: '@Husain3413', url: 'https://twitter.com/Husain3413', color: '#1DA1F2' },
+          ].map(link => (
+            <TouchableOpacity
+              key={link.label}
+              onPress={() => Linking.openURL(link.url).catch(() => {})}
+              style={{
+                flexDirection: 'row', alignItems: 'center', gap: 12,
+                backgroundColor: isDark ? T.bg : '#F8FAFC', borderRadius: 12, padding: 12,
+                borderWidth: 1, borderColor: cardBorder,
+              }}
+              activeOpacity={0.75}
+            >
               <View style={{
-                width: 40, height: 40, borderRadius: 10,
-                backgroundColor: T.accent + '20', alignItems: 'center', justifyContent: 'center',
-                borderWidth: 1, borderColor: T.accent + '50',
+                width: 34, height: 34, borderRadius: 10,
+                backgroundColor: link.color + '18', borderWidth: 1, borderColor: link.color + '35',
+                alignItems: 'center', justifyContent: 'center',
               }}>
-                <Text style={{ color: T.accent, fontSize: 11, fontWeight: '900' }}>{lang.code}</Text>
+                <Text style={{ fontSize: 15 }}>{link.icon}</Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ color: T.text, fontSize: 13, fontWeight: '900', marginBottom: 3 }}>{lang.name}</Text>
-                <Text style={{ color: T.muted, fontSize: 10, lineHeight: 15 }}>{lang.desc}</Text>
+                <Text style={{ color: textSub, fontSize: 8, fontWeight: '700', letterSpacing: 1 }}>{link.label}</Text>
+                <Text style={{ color: link.color, fontSize: 13, fontWeight: '700', marginTop: 2 }}>{link.value}</Text>
+              </View>
+              <Text style={{ color: textSub, fontSize: 16 }}>↗</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      {/* Multi-Agent System */}
+      <View style={{ marginBottom: 20 }}>
+        <Text style={{ color: textSub, fontSize: 9, fontWeight: '700', letterSpacing: 3, marginBottom: 14 }}>
+          🤖 MULTI-AGENT SYSTEM
+        </Text>
+        <View style={{ gap: 10 }}>
+          {AGENTS.map(a => (
+            <View key={a.name} style={{
+              backgroundColor: cardBg, borderRadius: 16, padding: 14,
+              borderWidth: 1.5, borderColor: a.color + '35',
+              flexDirection: 'row', gap: 12, alignItems: 'center',
+              ...shadow(a.color),
+            }}>
+              <View style={{
+                width: 42, height: 42, borderRadius: 12,
+                backgroundColor: a.color + '14', alignItems: 'center', justifyContent: 'center',
+                borderWidth: 1.5, borderColor: a.color + '35',
+              }}>
+                <Text style={{ color: a.color, fontSize: 16, fontWeight: '900' }}>{a.badge}</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                  <Text style={{ color: T.text, fontSize: 13, fontWeight: '700' }}>{a.name}</Text>
+                  <View style={{ backgroundColor: a.color + '18', borderRadius: 5, paddingHorizontal: 6, paddingVertical: 2, borderWidth: 1, borderColor: a.color + '30' }}>
+                    <Text style={{ color: a.color, fontSize: 8, fontWeight: '700' }}>{a.speed}</Text>
+                  </View>
+                </View>
+                <Text style={{ color: textSub, fontSize: 11, lineHeight: 16 }}>{a.role}</Text>
               </View>
             </View>
           ))}
         </View>
       </View>
 
-      {/* ── Neural Stack ── */}
-      <View style={{ marginBottom: 28 }}>
-        <Text style={{ color: T.muted, fontSize: 9, fontWeight: '900', letterSpacing: 3, marginBottom: 14 }}>
+      {/* Tech Stack */}
+      <View style={{ marginBottom: 20 }}>
+        <Text style={{ color: textSub, fontSize: 9, fontWeight: '700', letterSpacing: 3, marginBottom: 14 }}>
           ▸ NEURAL STACK
         </Text>
-        <View style={{ backgroundColor: T.surface, borderRadius: 16, borderWidth: 1, borderColor: T.card, overflow: 'hidden' }}>
+        <View style={{ backgroundColor: cardBg, borderRadius: 16, borderWidth: 1, borderColor: cardBorder, overflow: 'hidden', ...shadow() }}>
           {STACK.map((item, i) => (
             <View key={item.name} style={{
               flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-              padding: 14,
-              borderBottomWidth: i < STACK.length - 1 ? 1 : 0,
-              borderBottomColor: T.card,
+              padding: 14, borderBottomWidth: i < STACK.length - 1 ? 1 : 0, borderBottomColor: cardBorder,
             }}>
-              <Text style={{ color: T.text, fontSize: 12, fontWeight: '700' }}>{item.name}</Text>
-              <Text style={{ color: T.muted, fontSize: 10 }}>{item.role}</Text>
+              <Text style={{ color: T.text, fontSize: 13, fontWeight: '600' }}>{item.name}</Text>
+              <Text style={{ color: textSub, fontSize: 11 }}>{item.role}</Text>
             </View>
           ))}
         </View>
       </View>
 
-      {/* ── GitHub Vault ── */}
-      <TouchableOpacity
-        onPress={() => openLink('https://github.com')}
-        onPressIn={() => setGithubGlow(true)}
-        onPressOut={() => setGithubGlow(false)}
-        style={{
-          borderRadius: 16, padding: 18, backgroundColor: T.surface,
-          borderWidth: 1.5, borderColor: T.accent,
-          alignItems: 'center', marginBottom: 28,
-          ...(githubGlow ? glowStyle : softGlow),
-        }}
-        activeOpacity={0.85}
-      >
-        <Text style={{ fontSize: 28, marginBottom: 8 }}>🔗</Text>
-        <Text style={{ color: T.accent, fontSize: 14, fontWeight: '900', letterSpacing: 2 }}>GITHUB VAULT</Text>
-        <Text style={{ color: T.muted, fontSize: 10, marginTop: 4 }}>
-          View source · Star repository · Fork & extend
+      {/* Languages */}
+      <View style={{ marginBottom: 24 }}>
+        <Text style={{ color: textSub, fontSize: 9, fontWeight: '700', letterSpacing: 3, marginBottom: 14 }}>
+          ▸ LANGUAGE MATRIX
         </Text>
-      </TouchableOpacity>
+        <View style={{ gap: 8 }}>
+          {LANGUAGES.map(lang => (
+            <View key={lang.code} style={{
+              backgroundColor: cardBg, borderRadius: 14, padding: 14,
+              borderWidth: 1, borderColor: cardBorder, flexDirection: 'row', gap: 12, alignItems: 'center',
+            }}>
+              <View style={{
+                width: 38, height: 38, borderRadius: 10,
+                backgroundColor: ACCENT + '14', alignItems: 'center', justifyContent: 'center',
+                borderWidth: 1, borderColor: ACCENT + '30',
+              }}>
+                <Text style={{ color: ACCENT, fontSize: 11, fontWeight: '800' }}>{lang.code}</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: T.text, fontSize: 13, fontWeight: '700', marginBottom: 3 }}>{lang.name}</Text>
+                <Text style={{ color: textSub, fontSize: 11, lineHeight: 15 }}>{lang.desc}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      </View>
 
       {/* Footer */}
       <View style={{ alignItems: 'center', gap: 4 }}>
-        <Text style={{ color: T.muted, fontSize: 9, letterSpacing: 2 }}>NEXA PRO — BUILD 3.0.0</Text>
-        <Text style={{ color: T.muted, fontSize: 9, letterSpacing: 1 }}>by Adil Hussain • @Husain3413</Text>
-        <Text style={{ color: T.card, fontSize: 9, letterSpacing: 1, marginTop: 2 }}>POWERED BY GEMINI 2.5 FLASH</Text>
+        <Text style={{ color: textSub, fontSize: 10, letterSpacing: 2 }}>NEXA PRO — BUILD 3.0.0</Text>
+        <Text style={{ color: textSub, fontSize: 10 }}>by Adil Hussain · @Husain3413</Text>
+        <Text style={{ color: cardBorder, fontSize: 9, marginTop: 4 }}>
+          Gemini · Groq · SambaNova
+        </Text>
       </View>
 
     </ScrollView>

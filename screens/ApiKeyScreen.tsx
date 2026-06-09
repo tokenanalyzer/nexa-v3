@@ -1,284 +1,287 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  Animated, Easing, ActivityIndicator, Linking, Platform,
+  Animated, ActivityIndicator, Linking, Platform,
   KeyboardAvoidingView,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { GEMINI_KEY_STORAGE, testApiKey } from '../constants/gemini';
+import { AGENTS, AgentId, testGeminiKey, testGroqKey, testSambaKey } from '../constants/agents';
 
-const BLUE = '#007AFF';
-const BG   = '#F2F2F7';
-const CARD = '#FFFFFF';
-const LABEL = '#3C3C43';
-const MUTED = '#8E8E93';
-const BORDER = '#C6C6C8';
-const SUCCESS = '#34C759';
-const DANGER  = '#FF3B30';
+const BG     = '#F8FAFC';
+const CARD   = '#FFFFFF';
+const LABEL  = '#0F172A';
+const MUTED  = '#94A3B8';
+const BORDER = '#E2E8F0';
+const SUCCESS = '#10B981';
+const DANGER  = '#F43F5E';
+
+const shadow = (color = '#000', size = 8): object =>
+  Platform.OS === 'web'
+    ? { boxShadow: `0 2px ${size}px ${color}18` } as object
+    : { shadowColor: color, shadowOpacity: 0.08, shadowRadius: size / 2, shadowOffset: { width: 0, height: 2 }, elevation: 2 };
+
+const testFns: Record<AgentId, (k: string) => Promise<boolean>> = {
+  gemini: testGeminiKey,
+  groq:   testGroqKey,
+  samba:  testSambaKey,
+};
+
+interface SlotState {
+  value: string;
+  visible: boolean;
+  status: 'idle' | 'ok' | 'fail';
+  testing: boolean;
+}
+
+const initSlot = (): SlotState => ({ value: '', visible: false, status: 'idle', testing: false });
 
 export default function ApiKeyScreen({
   onSaved,
-  existingKey = '',
   inline = false,
 }: {
   onSaved: () => void;
-  existingKey?: string;
   inline?: boolean;
 }) {
-  const [key, setKey]             = useState(existingKey);
-  const [visible, setVisible]     = useState(false);
-  const [testing, setTesting]     = useState(false);
-  const [saving, setSaving]       = useState(false);
-  const [testStatus, setTestStatus] = useState<'idle' | 'ok' | 'fail'>('idle');
-  const [testMsg, setTestMsg]     = useState('');
-
+  const [slots, setSlots] = useState<Record<AgentId, SlotState>>({
+    gemini: initSlot(), groq: initSlot(), samba: initSlot(),
+  });
+  const [saving, setSaving] = useState(false);
   const fadeAnim  = useRef(new Animated.Value(inline ? 1 : 0)).current;
-  const slideAnim = useRef(new Animated.Value(inline ? 0 : 32)).current;
-  const shakeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(inline ? 0 : 28)).current;
 
+  // Load existing keys
   useEffect(() => {
-    if (inline) return;
-    Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: false }),
-      Animated.spring(slideAnim, { toValue: 0, tension: 80, friction: 12, useNativeDriver: false }),
-    ]).start();
+    const load = async () => {
+      const updated = { ...slots };
+      for (const agent of AGENTS) {
+        try {
+          const stored = await AsyncStorage.getItem(agent.storageKey);
+          if (stored?.trim()) updated[agent.id] = { ...initSlot(), value: stored.trim() };
+        } catch {}
+      }
+      setSlots(updated);
+    };
+    load();
+    if (!inline) {
+      Animated.parallel([
+        Animated.timing(fadeAnim,  { toValue: 1, duration: 500, useNativeDriver: false }),
+        Animated.spring(slideAnim, { toValue: 0, tension: 80, friction: 12, useNativeDriver: false }),
+      ]).start();
+    }
   }, []);
 
-  const shake = () => {
-    shakeAnim.setValue(0);
-    Animated.sequence([
-      Animated.timing(shakeAnim, { toValue: 8,  duration: 60, useNativeDriver: false }),
-      Animated.timing(shakeAnim, { toValue: -8, duration: 60, useNativeDriver: false }),
-      Animated.timing(shakeAnim, { toValue: 6,  duration: 60, useNativeDriver: false }),
-      Animated.timing(shakeAnim, { toValue: -6, duration: 60, useNativeDriver: false }),
-      Animated.timing(shakeAnim, { toValue: 0,  duration: 60, useNativeDriver: false }),
-    ]).start();
+  const updateSlot = (id: AgentId, patch: Partial<SlotState>) =>
+    setSlots(prev => ({ ...prev, [id]: { ...prev[id], ...patch } }));
+
+  const handleTest = async (id: AgentId) => {
+    const val = slots[id].value.trim();
+    if (!val) return;
+    updateSlot(id, { testing: true, status: 'idle' });
+    const ok = await testFns[id](val).catch(() => false);
+    updateSlot(id, { testing: false, status: ok ? 'ok' : 'fail' });
   };
 
-  const pasteFromClipboard = async () => {
+  const handleSave = async () => {
+    const geminiVal = slots.gemini.value.trim();
+    if (!geminiVal) return;
+    setSaving(true);
+    for (const agent of AGENTS) {
+      const val = slots[agent.id].value.trim();
+      if (val) await AsyncStorage.setItem(agent.storageKey, val).catch(() => {});
+      else await AsyncStorage.removeItem(agent.storageKey).catch(() => {});
+    }
+    await new Promise(r => setTimeout(r, 300));
+    onSaved();
+  };
+
+  const pasteFor = async (id: AgentId) => {
     try {
       if (typeof navigator !== 'undefined' && navigator.clipboard) {
-        const text = await navigator.clipboard.readText();
-        if (text?.trim()) { setKey(text.trim()); setTestStatus('idle'); }
+        const t = await navigator.clipboard.readText();
+        if (t?.trim()) updateSlot(id, { value: t.trim(), status: 'idle' });
       }
     } catch {}
   };
 
-  const handleTest = async () => {
-    const trimmed = key.trim();
-    if (!trimmed) { shake(); return; }
-    setTesting(true); setTestStatus('idle'); setTestMsg('');
-    try {
-      const ok = await testApiKey(trimmed);
-      setTestStatus(ok ? 'ok' : 'fail');
-      setTestMsg(ok ? 'Connected successfully — Gemini 2.5 is responding.' : 'Invalid key or quota exceeded. Check your Google AI Studio.');
-    } catch {
-      setTestStatus('fail');
-      setTestMsg('Could not reach Gemini. Check your network.');
-    }
-    setTesting(false);
-  };
-
-  const handleSave = async () => {
-    const trimmed = key.trim();
-    if (!trimmed) { shake(); return; }
-    setSaving(true);
-    try {
-      await AsyncStorage.setItem(GEMINI_KEY_STORAGE, trimmed);
-      await new Promise(r => setTimeout(r, 400));
-      onSaved();
-    } catch { setSaving(false); }
-  };
-
-  const handleClear = async () => {
-    await AsyncStorage.removeItem(GEMINI_KEY_STORAGE);
-    setKey(''); setTestStatus('idle'); setTestMsg('');
-  };
-
-  const statusColor = testStatus === 'ok' ? SUCCESS : testStatus === 'fail' ? DANGER : MUTED;
+  const geminiVal = slots.gemini.value.trim();
 
   const content = (
     <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
 
-      {/* Icon + header */}
-      <View style={{ alignItems: 'center', paddingTop: inline ? 8 : 60, paddingBottom: 32, paddingHorizontal: 24 }}>
-        <View style={{
-          width: 80, height: 80, borderRadius: 22, backgroundColor: BLUE,
-          alignItems: 'center', justifyContent: 'center', marginBottom: 20,
-          ...(Platform.OS === 'web' ? { boxShadow: `0 8px 24px ${BLUE}40` } as object : { shadowColor: BLUE, shadowOpacity: 0.35, shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: 10 }),
-        }}>
-          <Text style={{ fontSize: 36 }}>🔑</Text>
-        </View>
-        <Text style={{ fontSize: 28, fontWeight: '700', color: '#1C1C1E', letterSpacing: -0.5, marginBottom: 8, textAlign: 'center' }}>
-          {inline ? 'Update API Key' : 'Connect Your AI'}
-        </Text>
-        <Text style={{ fontSize: 15, color: MUTED, textAlign: 'center', lineHeight: 22, maxWidth: 300 }}>
-          Enter your Gemini API key to power all AI features in NEXA PRO. Your key is stored only on this device.
-        </Text>
-      </View>
-
-      {/* Key input card */}
-      <View style={{ marginHorizontal: 20, marginBottom: 12 }}>
-        <Text style={{ fontSize: 13, fontWeight: '600', color: LABEL, marginBottom: 8, marginLeft: 4 }}>
-          GEMINI API KEY
-        </Text>
-        <Animated.View style={{
-          backgroundColor: CARD, borderRadius: 14,
-          borderWidth: 1.5,
-          borderColor: testStatus === 'ok' ? SUCCESS : testStatus === 'fail' ? DANGER : BORDER,
-          flexDirection: 'row', alignItems: 'center',
-          overflow: 'hidden',
-          transform: [{ translateX: shakeAnim }],
-          ...(Platform.OS === 'web' ? { boxShadow: '0 2px 8px rgba(0,0,0,0.06)' } as object : { shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2 }),
-        }}>
-          <TextInput
-            value={key}
-            onChangeText={t => { setKey(t); setTestStatus('idle'); setTestMsg(''); }}
-            secureTextEntry={!visible}
-            placeholder="AIza..."
-            placeholderTextColor={BORDER}
-            autoCapitalize="none"
-            autoCorrect={false}
-            style={{
-              flex: 1, paddingHorizontal: 16, paddingVertical: 16,
-              fontSize: 15, color: '#1C1C1E',
-              fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-            }}
-          />
-          {/* Show/hide toggle */}
-          <TouchableOpacity
-            onPress={() => setVisible(v => !v)}
-            style={{ paddingHorizontal: 14, paddingVertical: 16 }}
-            activeOpacity={0.6}
-          >
-            <Text style={{ fontSize: 18 }}>{visible ? '🙈' : '👁️'}</Text>
-          </TouchableOpacity>
-          {/* Paste */}
-          {Platform.OS === 'web' && (
-            <TouchableOpacity
-              onPress={pasteFromClipboard}
-              style={{ paddingHorizontal: 14, paddingVertical: 16, borderLeftWidth: 1, borderLeftColor: BG }}
-              activeOpacity={0.6}
-            >
-              <Text style={{ color: BLUE, fontSize: 13, fontWeight: '600' }}>Paste</Text>
-            </TouchableOpacity>
-          )}
-        </Animated.View>
-
-        {/* Status message */}
-        {testMsg !== '' && (
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: 8, marginLeft: 4 }}>
-            <Text style={{ color: statusColor, fontSize: 13, flex: 1, lineHeight: 18 }}>
-              {testStatus === 'ok' ? '✓ ' : '✗ '}{testMsg}
+      {/* Header */}
+      <View style={{ alignItems: 'center', paddingTop: inline ? 4 : 52, paddingBottom: 28, paddingHorizontal: 24 }}>
+        {!inline && (
+          <>
+            <View style={{
+              width: 72, height: 72, borderRadius: 20, marginBottom: 18,
+              alignItems: 'center', justifyContent: 'center',
+              backgroundColor: '#6C47FF',
+              ...(Platform.OS === 'web' ? { boxShadow: '0 8px 24px #6C47FF40' } as object : { shadowColor: '#6C47FF', shadowOpacity: 0.3, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 8 }),
+            }}>
+              <Text style={{ fontSize: 32 }}>🤖</Text>
+            </View>
+            <Text style={{ fontSize: 26, fontWeight: '700', color: LABEL, letterSpacing: -0.5, marginBottom: 6, textAlign: 'center' }}>
+              Connect Your AI Agents
             </Text>
-          </View>
+            <Text style={{ fontSize: 14, color: MUTED, textAlign: 'center', lineHeight: 20, maxWidth: 300 }}>
+              Add your API keys to unlock all 3 AI agents. Only Gemini is required.
+            </Text>
+          </>
+        )}
+        {inline && (
+          <Text style={{ fontSize: 17, fontWeight: '700', color: LABEL, marginBottom: 4 }}>AI Agent Keys</Text>
         )}
       </View>
 
-      {/* Test Connection */}
-      <View style={{ marginHorizontal: 20, marginBottom: 10 }}>
-        <TouchableOpacity
-          onPress={handleTest}
-          disabled={testing || !key.trim()}
-          style={{
-            backgroundColor: CARD, borderRadius: 14, paddingVertical: 15,
-            alignItems: 'center', borderWidth: 1.5,
-            borderColor: testStatus === 'ok' ? SUCCESS : testStatus === 'fail' ? DANGER : BORDER,
-            flexDirection: 'row', justifyContent: 'center', gap: 8,
-            ...(Platform.OS === 'web' ? { boxShadow: '0 2px 8px rgba(0,0,0,0.06)' } as object : { shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 1 }),
-          }}
-          activeOpacity={0.7}
-        >
-          {testing
-            ? <ActivityIndicator size="small" color={BLUE} />
-            : <Text style={{ fontSize: 16 }}>
-                {testStatus === 'ok' ? '✅' : testStatus === 'fail' ? '❌' : '🔗'}
-              </Text>
-          }
-          <Text style={{
-            fontSize: 15, fontWeight: '600',
-            color: testStatus === 'ok' ? SUCCESS : testStatus === 'fail' ? DANGER : testing ? MUTED : LABEL,
-          }}>
-            {testing ? 'Testing connection…' : testStatus === 'ok' ? 'Connection verified' : testStatus === 'fail' ? 'Connection failed' : 'Test Connection'}
-          </Text>
-        </TouchableOpacity>
+      {/* Agent slots */}
+      <View style={{ paddingHorizontal: 20, gap: 16, marginBottom: 20 }}>
+        {AGENTS.map(agent => {
+          const slot = slots[agent.id];
+          const borderColor = slot.status === 'ok' ? SUCCESS : slot.status === 'fail' ? DANGER : BORDER;
+          const isRequired = agent.id === 'gemini';
+          return (
+            <View key={agent.id} style={{
+              backgroundColor: CARD, borderRadius: 18, padding: 16,
+              borderWidth: 1.5, borderColor,
+              ...shadow(agent.color, 12),
+            }}>
+              {/* Agent header */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                <View style={{
+                  width: 38, height: 38, borderRadius: 11,
+                  backgroundColor: agent.color + '15',
+                  borderWidth: 1.5, borderColor: agent.color + '40',
+                  alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Text style={{ fontSize: 16, fontWeight: '900', color: agent.color }}>{agent.badge}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={{ fontSize: 15, fontWeight: '700', color: LABEL }}>{agent.name}</Text>
+                    {isRequired && (
+                      <View style={{ backgroundColor: agent.color + '18', borderRadius: 5, paddingHorizontal: 6, paddingVertical: 2, borderWidth: 1, borderColor: agent.color + '35' }}>
+                        <Text style={{ color: agent.color, fontSize: 9, fontWeight: '700' }}>REQUIRED</Text>
+                      </View>
+                    )}
+                    <View style={{ backgroundColor: '#F1F5F9', borderRadius: 5, paddingHorizontal: 6, paddingVertical: 2 }}>
+                      <Text style={{ color: MUTED, fontSize: 9, fontWeight: '600' }}>{agent.speed}</Text>
+                    </View>
+                  </View>
+                  <Text style={{ color: MUTED, fontSize: 11, marginTop: 2, lineHeight: 15 }}>{agent.specialty}</Text>
+                </View>
+                {slot.status === 'ok' && <Text style={{ fontSize: 18 }}>✅</Text>}
+                {slot.status === 'fail' && <Text style={{ fontSize: 18 }}>❌</Text>}
+              </View>
+
+              {/* Input row */}
+              <View style={{
+                flexDirection: 'row', alignItems: 'center',
+                backgroundColor: BG, borderRadius: 12,
+                borderWidth: 1, borderColor: BORDER, overflow: 'hidden', marginBottom: 10,
+              }}>
+                <TextInput
+                  value={slot.value}
+                  onChangeText={v => updateSlot(agent.id, { value: v, status: 'idle' })}
+                  secureTextEntry={!slot.visible}
+                  placeholder={agent.id === 'gemini' ? 'AIza...' : agent.id === 'groq' ? 'gsk_...' : 'sn-...'}
+                  placeholderTextColor={BORDER}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  style={{
+                    flex: 1, paddingHorizontal: 14, paddingVertical: 13,
+                    fontSize: 14, color: LABEL,
+                    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+                  }}
+                />
+                <TouchableOpacity onPress={() => updateSlot(agent.id, { visible: !slot.visible })} style={{ paddingHorizontal: 12 }} activeOpacity={0.6}>
+                  <Text style={{ fontSize: 16 }}>{slot.visible ? '🙈' : '👁️'}</Text>
+                </TouchableOpacity>
+                {Platform.OS === 'web' && (
+                  <TouchableOpacity onPress={() => pasteFor(agent.id)} style={{ paddingHorizontal: 12, paddingVertical: 13, borderLeftWidth: 1, borderLeftColor: BORDER }} activeOpacity={0.6}>
+                    <Text style={{ color: agent.color, fontSize: 12, fontWeight: '700' }}>Paste</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {/* Test + Get Key row */}
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity
+                  onPress={() => handleTest(agent.id)}
+                  disabled={slot.testing || !slot.value.trim()}
+                  style={{
+                    flex: 1, paddingVertical: 10, borderRadius: 10,
+                    borderWidth: 1.5,
+                    borderColor: slot.status === 'ok' ? SUCCESS : slot.status === 'fail' ? DANGER : agent.color + '50',
+                    backgroundColor: slot.status === 'ok' ? SUCCESS + '10' : slot.status === 'fail' ? DANGER + '10' : agent.color + '08',
+                    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  }}
+                  activeOpacity={0.7}
+                >
+                  {slot.testing
+                    ? <ActivityIndicator size="small" color={agent.color} />
+                    : <Text style={{ fontSize: 13 }}>{slot.status === 'ok' ? '✓' : slot.status === 'fail' ? '✗' : '🔗'}</Text>
+                  }
+                  <Text style={{
+                    fontSize: 12, fontWeight: '600',
+                    color: slot.status === 'ok' ? SUCCESS : slot.status === 'fail' ? DANGER : slot.testing ? MUTED : agent.color,
+                  }}>
+                    {slot.testing ? 'Testing…' : slot.status === 'ok' ? 'Verified' : slot.status === 'fail' ? 'Failed' : 'Test'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => Linking.openURL(agent.getKeyUrl)}
+                  style={{
+                    paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10,
+                    borderWidth: 1, borderColor: BORDER, backgroundColor: CARD,
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={{ color: MUTED, fontSize: 12, fontWeight: '600' }}>Get Key ↗</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          );
+        })}
       </View>
 
-      {/* Save CTA */}
+      {/* Save button */}
       <View style={{ marginHorizontal: 20, marginBottom: 10 }}>
         <TouchableOpacity
           onPress={handleSave}
-          disabled={saving || !key.trim()}
+          disabled={saving || !geminiVal}
           style={{
-            backgroundColor: key.trim() ? BLUE : BORDER,
+            backgroundColor: geminiVal ? '#6C47FF' : BORDER,
             borderRadius: 14, paddingVertical: 16,
-            alignItems: 'center', justifyContent: 'center',
-            flexDirection: 'row', gap: 8,
-            ...(key.trim() && Platform.OS === 'web'
-              ? { boxShadow: `0 4px 16px ${BLUE}50` } as object
-              : key.trim() ? { shadowColor: BLUE, shadowOpacity: 0.3, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 6 } : {}),
+            alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8,
+            ...(geminiVal && Platform.OS === 'web'
+              ? { boxShadow: '0 4px 20px #6C47FF45' } as object
+              : geminiVal ? { shadowColor: '#6C47FF', shadowOpacity: 0.28, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 6 } : {}),
           }}
           activeOpacity={0.85}
         >
           {saving
-            ? <ActivityIndicator size="small" color="#fff" />
+            ? <ActivityIndicator color="#fff" />
             : <Text style={{ fontSize: 17, fontWeight: '700', color: '#fff', letterSpacing: -0.2 }}>
-                Save &amp; Continue
+                {inline ? 'Save Keys' : 'Save & Launch NEXA'}
               </Text>
           }
         </TouchableOpacity>
       </View>
 
-      {/* Clear key (only if editing) */}
-      {inline && existingKey !== '' && (
-        <View style={{ marginHorizontal: 20, marginBottom: 10 }}>
-          <TouchableOpacity
-            onPress={handleClear}
-            style={{
-              backgroundColor: CARD, borderRadius: 14, paddingVertical: 15,
-              alignItems: 'center', borderWidth: 1, borderColor: BORDER,
-            }}
-            activeOpacity={0.7}
-          >
-            <Text style={{ fontSize: 15, fontWeight: '600', color: DANGER }}>Remove Saved Key</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Footer link */}
-      <View style={{ alignItems: 'center', paddingHorizontal: 24, paddingTop: 12, paddingBottom: 32 }}>
-        <Text style={{ color: MUTED, fontSize: 13, textAlign: 'center', lineHeight: 18, marginBottom: 10 }}>
-          Don't have a key? Get one free from Google AI Studio.
-        </Text>
-        <TouchableOpacity
-          onPress={() => Linking.openURL('https://aistudio.google.com/app/apikey')}
-          activeOpacity={0.7}
-        >
-          <Text style={{ color: BLUE, fontSize: 14, fontWeight: '600' }}>
-            Open Google AI Studio ↗
-          </Text>
-        </TouchableOpacity>
-
-        <Text style={{ color: BORDER, fontSize: 11, marginTop: 24, textAlign: 'center', lineHeight: 16 }}>
-          Your API key is stored locally using encrypted device storage.{'\n'}It is never sent to any server other than Google.
+      {/* Footer note */}
+      <View style={{ alignItems: 'center', paddingHorizontal: 24, paddingTop: 8, paddingBottom: 36 }}>
+        <Text style={{ color: MUTED, fontSize: 11, textAlign: 'center', lineHeight: 17 }}>
+          Keys are stored only on this device.{'\n'}They are never sent to any server other than the respective AI provider.
         </Text>
       </View>
-
     </Animated.View>
   );
 
   if (inline) return content;
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: BG }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <ScrollView
-        style={{ flex: 1, backgroundColor: BG }}
-        contentContainerStyle={{ flexGrow: 1 }}
-        keyboardShouldPersistTaps="handled"
-      >
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: BG }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <ScrollView style={{ flex: 1, backgroundColor: BG }} contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
         {content}
       </ScrollView>
     </KeyboardAvoidingView>
