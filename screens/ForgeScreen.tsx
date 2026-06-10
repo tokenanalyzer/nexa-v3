@@ -13,7 +13,7 @@ import {
   TrendingTopic, ABHooks, ThreadTweet, BrandVoiceProfile, SwarmPlatformCard,
 } from '../constants/gemini';
 import { AgentId } from '../constants/agents';
-import { VAULT_STORAGE_KEY, VaultItem } from '../constants/vault';
+import { VAULT_STORAGE_KEY, VaultItem, FORGE_STATE_KEY } from '../constants/vault';
 
 const LANGUAGES = ['English', 'Hindi', 'Spanish', 'Hinglish'] as const;
 type Language = typeof LANGUAGES[number];
@@ -152,6 +152,33 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
       if (raw) { setDnaProfile(JSON.parse(raw)); setDnaAnalyzed(true); }
     }).catch(() => {});
   }, []);
+
+  // Load persisted Forge state on mount
+  useEffect(() => {
+    AsyncStorage.getItem(FORGE_STATE_KEY).then(raw => {
+      if (!raw) return;
+      try {
+        const s = JSON.parse(raw);
+        if (s.topic)           setTopic(s.topic);
+        if (s.mode)            setMode(s.mode);
+        if (s.selected?.length) setSelected(s.selected);
+        if (s.language)        setLanguage(s.language);
+        if (s.tone)            setTone(s.tone);
+        if (s.result)          setResult(s.result);
+        if (s.autopilotResult) setAutopilotResult(s.autopilotResult);
+        if (s.swarmCards?.length) setSwarmCards(s.swarmCards);
+      } catch {}
+    }).catch(() => {});
+  }, []);
+
+  // Save Forge state whenever content or settings change
+  useEffect(() => {
+    if (!result && !autopilotResult && !swarmCards.length) return;
+    AsyncStorage.setItem(FORGE_STATE_KEY, JSON.stringify({
+      topic, mode, selected, language, tone,
+      result, autopilotResult, swarmCards,
+    })).catch(() => {});
+  }, [result, autopilotResult, swarmCards, topic, mode, selected, language, tone]);
 
   const togglePlatform = (id: string) =>
     setSelected(prev => prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]);

@@ -3,8 +3,10 @@ import {
   View, Text, ScrollView, TextInput, TouchableOpacity,
   KeyboardAvoidingView, Platform, ActivityIndicator, Animated,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { THEMES, ThemeKey } from '../constants/themes';
 import { streamMessage } from '../constants/gemini';
+import { INTEL_CHAT_KEY } from '../constants/vault';
 
 interface Message { role: 'user' | 'model'; parts: { text: string }[]; }
 type AgentLabel = 'groq' | 'gemini';
@@ -48,6 +50,24 @@ export default function IntelScreen({ theme }: { theme: ThemeKey }) {
     gemini: { label: 'Gemini', badge: '✦', color: ACCENT,    model: '2.5 Flash'      },
   };
 
+  // Load persisted chat on mount
+  useEffect(() => {
+    AsyncStorage.getItem(INTEL_CHAT_KEY).then(raw => {
+      if (!raw) return;
+      try {
+        const saved = JSON.parse(raw);
+        if (saved.messages?.length) setMessages(saved.messages);
+        if (saved.currentAgent) setCurrentAgent(saved.currentAgent);
+      } catch {}
+    }).catch(() => {});
+  }, []);
+
+  // Save chat whenever messages change
+  useEffect(() => {
+    if (messages.length === 0) return;
+    AsyncStorage.setItem(INTEL_CHAT_KEY, JSON.stringify({ messages, currentAgent })).catch(() => {});
+  }, [messages, currentAgent]);
+
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
@@ -85,7 +105,10 @@ export default function IntelScreen({ theme }: { theme: ThemeKey }) {
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
   };
 
-  const clearChat = () => { setMessages([]); setStreamText(''); setCopiedIdx(null); };
+  const clearChat = () => {
+    setMessages([]); setStreamText(''); setCopiedIdx(null);
+    AsyncStorage.removeItem(INTEL_CHAT_KEY).catch(() => {});
+  };
 
   const copyMsg = async (text: string, idx: number) => {
     try {
