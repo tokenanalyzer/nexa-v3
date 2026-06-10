@@ -145,6 +145,7 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
   const [thread, setThread]                 = useState<ThreadTweet[]>([]);
   const [loadingThread, setLoadingThread]   = useState(false);
   const [copiedTweet, setCopiedTweet]       = useState<number | null>(null);
+  const [copiedField, setCopiedField]       = useState<string | null>(null);
 
   useEffect(() => {
     AsyncStorage.getItem(BRAND_VOICE_KEY).then(raw => {
@@ -183,6 +184,7 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
         );
         setSwarmCards(result.cards);
         setSwarmTiming(result.timing);
+        saveSwarmHistory(result.cards, result.timing);
       } else if (mode === 'autopilot') {
         const raw = await sendAutopilotMessage(topic + dnaContext, platformNames, language, tone);
         setAutopilotResult(JSON.parse(cleanJSON(raw)) as AutopilotResult);
@@ -239,6 +241,12 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
       setCopiedTweet(num); setTimeout(() => setCopiedTweet(null), 2000);
     } catch {}
   };
+  const copyField = async (text: string, key: string) => {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard) await navigator.clipboard.writeText(text);
+      setCopiedField(key); setTimeout(() => setCopiedField(null), 2000);
+    } catch {}
+  };
   const saveToVault = async () => {
     try {
       const existing = await AsyncStorage.getItem(VAULT_STORAGE_KEY);
@@ -251,6 +259,23 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
       await AsyncStorage.setItem(VAULT_STORAGE_KEY, JSON.stringify([newItem, ...items]));
       setSaved(true); setTimeout(() => setSaved(false), 3000);
     } catch { Alert.alert('Vault Error', 'Could not save.'); }
+  };
+
+  const saveSwarmHistory = async (cards: SwarmPlatformCard[], timing: Partial<Record<AgentId, number>>) => {
+    try {
+      const existing = await AsyncStorage.getItem('nexa_swarm_history');
+      const history = existing ? JSON.parse(existing) : [];
+      const entry = {
+        id: Date.now(), topic: topic.slice(0, 60),
+        platforms: cards.map(c => c.platform),
+        viralScore: cards[0]?.viralScore ?? 0,
+        timing: Object.fromEntries(Object.entries(timing).filter(([, v]) => v != null)),
+        date: new Date().toLocaleDateString(),
+        time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+        agentCount: Object.keys(timing).length,
+      };
+      await AsyncStorage.setItem('nexa_swarm_history', JSON.stringify([entry, ...history.slice(0, 19)]));
+    } catch {}
   };
 
   // Brand DNA
@@ -740,13 +765,23 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
                           </View>
                           {card.hook && (
                             <View style={{ marginBottom: 10 }}>
-                              <Text style={{ color: textSub, fontSize: 10, fontWeight: '600', marginBottom: 4 }}>Hook A</Text>
+                              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                                <Text style={{ color: textSub, fontSize: 10, fontWeight: '600' }}>Hook A</Text>
+                                <TouchableOpacity onPress={() => copyField(card.hook!, `sw-hookA-${i}`)} style={{ backgroundColor: '#F43F5E12', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 1, borderColor: '#F43F5E25' }}>
+                                  <Text style={{ color: '#F43F5E', fontSize: 9, fontWeight: '600' }}>{copiedField === `sw-hookA-${i}` ? '✓ Copied' : 'Copy'}</Text>
+                                </TouchableOpacity>
+                              </View>
                               <Text style={{ color: T.text, fontSize: 13, fontStyle: 'italic', lineHeight: 19 }}>"{card.hook}"</Text>
                             </View>
                           )}
                           {card.hookB && (
                             <View style={{ marginBottom: 10 }}>
-                              <Text style={{ color: textSub, fontSize: 10, fontWeight: '600', marginBottom: 4 }}>Hook B</Text>
+                              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                                <Text style={{ color: textSub, fontSize: 10, fontWeight: '600' }}>Hook B</Text>
+                                <TouchableOpacity onPress={() => copyField(card.hookB!, `sw-hookB-${i}`)} style={{ backgroundColor: '#F43F5E12', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 1, borderColor: '#F43F5E25' }}>
+                                  <Text style={{ color: '#F43F5E', fontSize: 9, fontWeight: '600' }}>{copiedField === `sw-hookB-${i}` ? '✓ Copied' : 'Copy'}</Text>
+                                </TouchableOpacity>
+                              </View>
                               <Text style={{ color: T.text, fontSize: 13, fontStyle: 'italic', lineHeight: 19 }}>"{card.hookB}"</Text>
                             </View>
                           )}
@@ -769,11 +804,21 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
                       {card.post && (
                         <View style={{ backgroundColor: '#5E5CE60A', borderRadius: 14, padding: 12, borderWidth: 1, borderColor: '#5E5CE620' }}>
                           <Text style={{ color: '#5E5CE6', fontSize: 10, fontWeight: '700', marginBottom: 10 }}>✦ CONTENT ARCHITECT  ·  Gemini</Text>
-                          <Text style={{ color: textSub, fontSize: 10, fontWeight: '600', marginBottom: 6 }}>Full Post</Text>
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                            <Text style={{ color: textSub, fontSize: 10, fontWeight: '600' }}>Full Post</Text>
+                            <TouchableOpacity onPress={() => copyField(card.post!, `sw-post-${i}`)} style={{ backgroundColor: '#5E5CE612', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 1, borderColor: '#5E5CE625' }}>
+                              <Text style={{ color: '#5E5CE6', fontSize: 9, fontWeight: '600' }}>{copiedField === `sw-post-${i}` ? '✓ Copied' : 'Copy'}</Text>
+                            </TouchableOpacity>
+                          </View>
                           <Text style={{ color: T.text, fontSize: 13, lineHeight: 21, marginBottom: 12 }}>{card.post}</Text>
                           {card.cta && (
                             <View style={{ backgroundColor: color + '12', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: color + '25', marginBottom: 12 }}>
-                              <Text style={{ color: textSub, fontSize: 10, fontWeight: '600', marginBottom: 3 }}>Call to Action</Text>
+                              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
+                                <Text style={{ color: textSub, fontSize: 10, fontWeight: '600' }}>Call to Action</Text>
+                                <TouchableOpacity onPress={() => copyField(card.cta!, `sw-cta-${i}`)} style={{ backgroundColor: color + '18', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 1, borderColor: color + '35' }}>
+                                  <Text style={{ color, fontSize: 9, fontWeight: '600' }}>{copiedField === `sw-cta-${i}` ? '✓ Copied' : 'Copy'}</Text>
+                                </TouchableOpacity>
+                              </View>
                               <Text style={{ color: T.text, fontSize: 13, fontWeight: '600' }}>{card.cta}</Text>
                             </View>
                           )}
@@ -800,19 +845,34 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
                           <Text style={{ color: '#0EA5E9', fontSize: 10, fontWeight: '700', marginBottom: 10 }}>◆ GROWTH STRATEGIST  ·  SambaNova</Text>
                           {card.seoAngle && (
                             <View style={{ marginBottom: 10 }}>
-                              <Text style={{ color: textSub, fontSize: 10, fontWeight: '600', marginBottom: 4 }}>SEO & Discovery Angle</Text>
+                              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                                <Text style={{ color: textSub, fontSize: 10, fontWeight: '600' }}>SEO & Discovery Angle</Text>
+                                <TouchableOpacity onPress={() => copyField(card.seoAngle!, `sw-seo-${i}`)} style={{ backgroundColor: '#0EA5E912', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 1, borderColor: '#0EA5E925' }}>
+                                  <Text style={{ color: '#0EA5E9', fontSize: 9, fontWeight: '600' }}>{copiedField === `sw-seo-${i}` ? '✓ Copied' : 'Copy'}</Text>
+                                </TouchableOpacity>
+                              </View>
                               <Text style={{ color: T.text, fontSize: 12, lineHeight: 18 }}>{card.seoAngle}</Text>
                             </View>
                           )}
                           {card.engagementTip && (
                             <View style={{ marginBottom: 10 }}>
-                              <Text style={{ color: textSub, fontSize: 10, fontWeight: '600', marginBottom: 4 }}>Engagement Psychology</Text>
+                              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                                <Text style={{ color: textSub, fontSize: 10, fontWeight: '600' }}>Engagement Psychology</Text>
+                                <TouchableOpacity onPress={() => copyField(card.engagementTip!, `sw-eng-${i}`)} style={{ backgroundColor: '#0EA5E912', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 1, borderColor: '#0EA5E925' }}>
+                                  <Text style={{ color: '#0EA5E9', fontSize: 9, fontWeight: '600' }}>{copiedField === `sw-eng-${i}` ? '✓ Copied' : 'Copy'}</Text>
+                                </TouchableOpacity>
+                              </View>
                               <Text style={{ color: T.text, fontSize: 12, lineHeight: 18 }}>{card.engagementTip}</Text>
                             </View>
                           )}
                           {card.altAngle && (
                             <View style={{ backgroundColor: '#0EA5E912', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: '#0EA5E930' }}>
-                              <Text style={{ color: textSub, fontSize: 10, fontWeight: '600', marginBottom: 4 }}>Alternative Angle</Text>
+                              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                                <Text style={{ color: textSub, fontSize: 10, fontWeight: '600' }}>Alternative Angle</Text>
+                                <TouchableOpacity onPress={() => copyField(card.altAngle!, `sw-alt-${i}`)} style={{ backgroundColor: '#0EA5E912', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 1, borderColor: '#0EA5E925' }}>
+                                  <Text style={{ color: '#0EA5E9', fontSize: 9, fontWeight: '600' }}>{copiedField === `sw-alt-${i}` ? '✓ Copied' : 'Copy'}</Text>
+                                </TouchableOpacity>
+                              </View>
                               <Text style={{ color: '#0EA5E9', fontSize: 12, lineHeight: 18, fontStyle: 'italic' }}>"{card.altAngle}"</Text>
                             </View>
                           )}
@@ -882,11 +942,21 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
                     </View>
                     <View style={{ padding: 14, gap: 12 }}>
                       <View style={{ backgroundColor: ACCENT + '0C', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: ACCENT + '25' }}>
-                        <Text style={{ color: textSub, fontSize: 10, fontWeight: '600', marginBottom: 6 }}>🎣 Viral Hook</Text>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                          <Text style={{ color: textSub, fontSize: 10, fontWeight: '600' }}>🎣 Viral Hook</Text>
+                          <TouchableOpacity onPress={() => copyField(pc.hook, `ap-hook-${i}`)} style={{ backgroundColor: ACCENT + '15', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 1, borderColor: ACCENT + '30' }}>
+                            <Text style={{ color: ACCENT, fontSize: 9, fontWeight: '600' }}>{copiedField === `ap-hook-${i}` ? '✓ Copied' : 'Copy'}</Text>
+                          </TouchableOpacity>
+                        </View>
                         <Text style={{ color: T.text, fontSize: 13, fontStyle: 'italic', lineHeight: 19 }}>"{pc.hook}"</Text>
                       </View>
                       <View>
-                        <Text style={{ color: textSub, fontSize: 10, fontWeight: '600', marginBottom: 8 }}>Post Content</Text>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                          <Text style={{ color: textSub, fontSize: 10, fontWeight: '600' }}>Post Content</Text>
+                          <TouchableOpacity onPress={() => copyField(pc.post, `ap-post-${i}`)} style={{ backgroundColor: ACCENT + '15', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 1, borderColor: ACCENT + '30' }}>
+                            <Text style={{ color: ACCENT, fontSize: 9, fontWeight: '600' }}>{copiedField === `ap-post-${i}` ? '✓ Copied' : 'Copy'}</Text>
+                          </TouchableOpacity>
+                        </View>
                         <Text style={{ color: T.text, fontSize: 13, lineHeight: 21 }}>{pc.post}</Text>
                       </View>
                       <View>
@@ -894,7 +964,12 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
                         <HashtagHeatmap hashtags={pc.hashtags} color={color} />
                       </View>
                       <View style={{ backgroundColor: color + '12', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: color + '25' }}>
-                        <Text style={{ color: textSub, fontSize: 10, fontWeight: '600', marginBottom: 4 }}>Call to Action</Text>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                          <Text style={{ color: textSub, fontSize: 10, fontWeight: '600' }}>Call to Action</Text>
+                          <TouchableOpacity onPress={() => copyField(pc.cta, `ap-cta-${i}`)} style={{ backgroundColor: color + '18', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 1, borderColor: color + '30' }}>
+                            <Text style={{ color, fontSize: 9, fontWeight: '600' }}>{copiedField === `ap-cta-${i}` ? '✓ Copied' : 'Copy'}</Text>
+                          </TouchableOpacity>
+                        </View>
                         <Text style={{ color: T.text, fontSize: 13, fontWeight: '600' }}>{pc.cta}</Text>
                       </View>
                       {pc.image_prompt && (

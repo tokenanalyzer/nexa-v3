@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Animated, Platform, Easing } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Animated, Platform, Easing, Image } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { THEMES, ThemeKey } from '../constants/themes';
 import { VAULT_STORAGE_KEY, VaultItem } from '../constants/vault';
@@ -135,10 +135,12 @@ export default function HomeScreen({
         {/* ── Header ──────────────────────────────────────────── */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
           <View>
-            <Text style={{ color: textSub, fontSize: 10, fontWeight: '600', letterSpacing: 2, marginBottom: 4 }}>NEURAL CORE v3.0</Text>
-            <Text style={{ color: T.text, fontSize: 30, fontWeight: '700', letterSpacing: -1.2 }}>
-              Nexa <Text style={{ color: ACCENT }}>AI</Text>
-            </Text>
+            <Text style={{ color: textSub, fontSize: 10, fontWeight: '600', letterSpacing: 2, marginBottom: 6 }}>NEURAL CORE v3.0</Text>
+            <Image
+              source={require('../assets/nexa-logo.png')}
+              resizeMode="contain"
+              style={{ width: 160, height: 56, marginTop: -4 }}
+            />
           </View>
           <View style={{ alignItems: 'flex-end', gap: 6 }}>
             <View style={{
