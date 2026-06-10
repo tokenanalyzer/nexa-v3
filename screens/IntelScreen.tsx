@@ -39,6 +39,7 @@ export default function IntelScreen({ theme }: { theme: ThemeKey }) {
   const [currentAgent, setCurrentAgent] = useState<AgentLabel>('gemini');
   const [streamText, setStreamText]     = useState('');
   const [cursorOn, setCursorOn]         = useState(true);
+  const [copiedIdx, setCopiedIdx]       = useState<number | null>(null);
   const scrollRef = useRef<ScrollView>(null);
   const dotAnim   = useRef(new Animated.Value(0)).current;
 
@@ -84,7 +85,16 @@ export default function IntelScreen({ theme }: { theme: ThemeKey }) {
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
   };
 
-  const clearChat = () => { setMessages([]); setStreamText(''); };
+  const clearChat = () => { setMessages([]); setStreamText(''); setCopiedIdx(null); };
+
+  const copyMsg = async (text: string, idx: number) => {
+    try {
+      if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard)
+        await navigator.clipboard.writeText(text);
+      setCopiedIdx(idx);
+      setTimeout(() => setCopiedIdx(null), 2000);
+    } catch {}
+  };
 
   const bgStyle: object = Platform.OS === 'web'
     ? ({
@@ -169,17 +179,33 @@ export default function IntelScreen({ theme }: { theme: ThemeKey }) {
 
         {messages.map((msg, idx) => {
           const isUser = msg.role === 'user';
+          const isCopied = copiedIdx === idx;
           return (
             <View key={idx} style={{ alignSelf: isUser ? 'flex-end' : 'flex-start', maxWidth: '88%', marginBottom: 12 }}>
               {!isUser && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 5 }}>
-                  <View style={{
-                    width: 20, height: 20, borderRadius: 6, backgroundColor: agentMeta.color + '18',
-                    alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: agentMeta.color + '30',
-                  }}>
-                    <Text style={{ fontSize: 9, color: agentMeta.color, fontWeight: '700' }}>{agentMeta.badge}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <View style={{
+                      width: 20, height: 20, borderRadius: 6, backgroundColor: agentMeta.color + '18',
+                      alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: agentMeta.color + '30',
+                    }}>
+                      <Text style={{ fontSize: 9, color: agentMeta.color, fontWeight: '700' }}>{agentMeta.badge}</Text>
+                    </View>
+                    <Text style={{ color: textSub, fontSize: 10, fontWeight: '600' }}>{agentMeta.label}</Text>
                   </View>
-                  <Text style={{ color: textSub, fontSize: 10, fontWeight: '600' }}>{agentMeta.label}</Text>
+                  <TouchableOpacity
+                    onPress={() => copyMsg(msg.parts[0].text, idx)}
+                    style={{
+                      marginLeft: 10,
+                      backgroundColor: isCopied ? agentMeta.color + '18' : (isDark ? T.card : '#F5F5F7'),
+                      borderRadius: 8, paddingHorizontal: 9, paddingVertical: 4,
+                      borderWidth: 1, borderColor: isCopied ? agentMeta.color + '40' : cardBorder,
+                    }}
+                    activeOpacity={0.7}>
+                    <Text style={{ color: isCopied ? agentMeta.color : textSub, fontSize: 10, fontWeight: '600' }}>
+                      {isCopied ? '✓ Copied' : '📋 Copy'}
+                    </Text>
+                  </TouchableOpacity>
                 </View>
               )}
               <View style={{
