@@ -192,6 +192,12 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
     setSwarmTiming({});
   };
 
+  const clearForge = () => {
+    setResult(''); setAutopilotResult(null); setTopic('');
+    resetCardState();
+    AsyncStorage.removeItem(FORGE_STATE_KEY).catch(() => {});
+  };
+
   const dnaContext = dnaProfile
     ? `\n\n[BRAND VOICE — Apply this voice: ${dnaProfile.name}. Tone: ${dnaProfile.tone_fingerprint}. Power words: ${dnaProfile.power_words.join(', ')}. Avoid: ${dnaProfile.avoid_words.join(', ')}]`
     : '';
@@ -1081,15 +1087,22 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
 
         {/* Action buttons */}
         {hasOutput && (
-          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 20 }}>
-            <TouchableOpacity onPress={copy} style={{ flex: 1, padding: 12, backgroundColor: cardBg, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: cardBorder }}>
-              <Text style={{ color: ACCENT, fontSize: 13, fontWeight: '600' }}>{copied ? '✓ Copied' : '📋 Copy'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => Share.share({ message: getContentString() }).catch(() => {})} style={{ flex: 1, padding: 12, backgroundColor: cardBg, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: cardBorder }}>
-              <Text style={{ color: ACCENT, fontSize: 13, fontWeight: '600' }}>📤 Share</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={saveToVault} style={{ flex: 1, padding: 12, backgroundColor: saved ? ACCENT + '15' : cardBg, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: saved ? ACCENT + '50' : cardBorder }}>
-              <Text style={{ color: saved ? ACCENT : textSub, fontSize: 13, fontWeight: '600' }}>{saved ? '✓ Saved' : '🗄️ Vault'}</Text>
+          <View style={{ gap: 8, marginBottom: 20 }}>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity onPress={copy} style={{ flex: 1, padding: 12, backgroundColor: cardBg, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: cardBorder }}>
+                <Text style={{ color: ACCENT, fontSize: 13, fontWeight: '600' }}>{copied ? '✓ Copied' : '📋 Copy'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => Share.share({ message: getContentString() }).catch(() => {})} style={{ flex: 1, padding: 12, backgroundColor: cardBg, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: cardBorder }}>
+                <Text style={{ color: ACCENT, fontSize: 13, fontWeight: '600' }}>📤 Share</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={saveToVault} style={{ flex: 1, padding: 12, backgroundColor: saved ? ACCENT + '15' : cardBg, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: saved ? ACCENT + '50' : cardBorder }}>
+                <Text style={{ color: saved ? ACCENT : textSub, fontSize: 13, fontWeight: '600' }}>{saved ? '✓ Saved' : '🗄️ Vault'}</Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity onPress={clearForge}
+              style={{ padding: 11, backgroundColor: isDark ? '#FF3B3010' : '#FFF1F0', borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: '#FF3B3030' }}
+              activeOpacity={0.7}>
+              <Text style={{ color: '#FF3B30', fontSize: 12, fontWeight: '600' }}>🗑️ Clear &amp; Start Fresh</Text>
             </TouchableOpacity>
           </View>
         )}
