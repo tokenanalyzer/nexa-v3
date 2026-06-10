@@ -6,12 +6,13 @@ import {
 import { THEMES, ThemeKey } from './constants/themes';
 import { hasApiKey } from './constants/gemini';
 import { getActiveAgents, AgentId } from './constants/agents';
-import HomeScreen   from './screens/HomeScreen';
-import IntelScreen  from './screens/IntelScreen';
-import ForgeScreen  from './screens/ForgeScreen';
-import VaultScreen  from './screens/VaultScreen';
-import AboutScreen  from './screens/AboutScreen';
-import ApiKeyScreen from './screens/ApiKeyScreen';
+import HomeScreen    from './screens/HomeScreen';
+import IntelScreen   from './screens/IntelScreen';
+import ForgeScreen   from './screens/ForgeScreen';
+import VaultScreen   from './screens/VaultScreen';
+import AboutScreen   from './screens/AboutScreen';
+import ApiKeyScreen  from './screens/ApiKeyScreen';
+import SplashScreen  from './components/SplashScreen';
 
 const TABS = [
   { id: 'home',  icon: '⚡', label: 'Home'  },
@@ -22,11 +23,12 @@ const TABS = [
 ];
 
 export default function App() {
-  const [ready, setReady]       = useState(false);
-  const [hasKey, setHasKey]     = useState(false);
-  const [tab, setTab]           = useState('home');
-  const [theme, setTheme]       = useState<ThemeKey>('light');
-  const [keyModal, setKeyModal] = useState(false);
+  const [ready, setReady]           = useState(false);
+  const [splashDone, setSplashDone] = useState(false);
+  const [hasKey, setHasKey]         = useState(false);
+  const [tab, setTab]               = useState('home');
+  const [theme, setTheme]           = useState<ThemeKey>('light');
+  const [keyModal, setKeyModal]     = useState(false);
   const [activeAgents, setActiveAgents] = useState<AgentId[]>([]);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -37,10 +39,14 @@ export default function App() {
       setHasKey(ok);
       if (ok) getActiveAgents().then(setActiveAgents);
       setReady(true);
-      Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: false }).start();
     };
     boot();
   }, []);
+
+  const handleSplashDone = () => {
+    setSplashDone(true);
+    Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: false }).start();
+  };
 
   const T = THEMES[theme];
   const isDark = T.isDark;
@@ -52,16 +58,13 @@ export default function App() {
     setActiveAgents(agents);
   };
 
-  // Loading splash
-  if (!ready) {
+  // Animated splash — show until both API check done AND splash animation finished
+  if (!splashDone) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#F5F5F7', alignItems: 'center', justifyContent: 'center' }}>
-        <StatusBar barStyle="dark-content" backgroundColor="#F5F5F7" />
-        <Text style={{ color: '#5E5CE6', fontSize: 30, fontWeight: '700', letterSpacing: -1 }}>
-          Nexa <Text style={{ color: '#1D1D1F' }}>AI</Text>
-        </Text>
-        <Text style={{ color: '#6E6E73', fontSize: 11, marginTop: 10, letterSpacing: 2 }}>LOADING…</Text>
-      </View>
+      <>
+        <StatusBar barStyle="light-content" backgroundColor="#020209" />
+        <SplashScreen onDone={handleSplashDone} />
+      </>
     );
   }
 
