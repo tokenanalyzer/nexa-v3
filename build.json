@@ -1,0 +1,48 @@
+{
+  "id": "78f0b017-6ccf-4a6b-ad7f-701f5a91e206",
+  "status": "ERRORED",
+  "platform": "ANDROID",
+  "error": {
+    "errorCode": "UNKNOWN_ERROR",
+    "message": "Unknown error. See logs of the Read app config build phase for more information."
+  },
+  "artifacts": {},
+  "fingerprint": {
+    "id": "019eb022-3f25-7e5c-9c60-e940a5689958",
+    "hash": "afe54c9bb8f2b2b3747b254ac573cae8d76bdfb2"
+  },
+  "initiatingActor": {
+    "id": "8ac471fb-73d1-49ae-bde6-f2d9401934a7",
+    "displayName": "venom31"
+  },
+  "logFiles": [
+    "https://storage.googleapis.com/eas-workflows-production/logs/6ebb3c25-14e0-43b0-ae5d-6807ca74c7c9/78f0b017-6ccf-4a6b-ad7f-701f5a91e206/2026-06-10T06%3A04%3A57Z-2cac3b05-d401-4084-a6a7-8fd3c439e96b.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260610%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260610T062538Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=0100d6eadb5fa6a0712e700d5aa5f05182b71cb658b11bf12088c9bd10cf88ead5d492744cb12d166ab1861e37650c222bf544b7d1e55faa04dbe8b3adc5fd0d2f52ab2080118cfb0c8c5618b10151fa1de0e77594cbcb36a49b1ae08876128c288f4bb44f29684f663f03f310f6fcc168d3042f2adc16405aee0adf02b411d6440fafc87770de3219af6f443b67a842594189a1a2ade9303657246e7752cfd643bfaefd81391abeb06f9db572f9170bbcdf8b01b37f1a9c2ef6c61968476ce7e0f7e2685e26ce16b92a77b78a1c0580bc16639ec5bdc4a752b516ad5840a3028de8644e46059cc153ef2cd5fdf2d466b61c043868cd8afd7518c2b997932616"
+  ],
+  "project": {
+    "id": "6ebb3c25-14e0-43b0-ae5d-6807ca74c7c9",
+    "name": "nexa-ai",
+    "slug": "nexa-ai",
+    "ownerAccount": {
+      "id": "7e202eed-6148-4b6e-a482-29eca8a5c417",
+      "name": "venom31"
+    }
+  },
+  "distribution": "INTERNAL",
+  "buildProfile": "preview",
+  "sdkVersion": "54.0.0",
+  "appVersion": "1.0.0",
+  "appBuildVersion": "1",
+  "gitCommitHash": "c1e1f621ac858c1a7a19afa311876c5a7e314963",
+  "gitCommitMessage": "Fix Expo SDK build",
+  "priority": "NORMAL",
+  "createdAt": "2026-06-10T06:04:54.917Z",
+  "updatedAt": "2026-06-10T06:06:19.978Z",
+  "completedAt": "2026-06-10T06:06:19.799Z",
+  "expirationDate": "2026-06-24T06:04:54.942Z",
+  "isForIosSimulator": false,
+  "metrics": {
+    "buildWaitTime": 2171,
+    "buildQueueTime": 4649,
+    "buildDuration": 78062
+  }
+}

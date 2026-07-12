@@ -1,0 +1,47 @@
+
+{
+  name: [32m'NEXA AI'[39m,
+  slug: [32m'nexa-ai'[39m,
+  version: [32m'1.0.0'[39m,
+  orientation: [32m'portrait'[39m,
+  icon: [32m'./assets/icon.png'[39m,
+  userInterfaceStyle: [32m'light'[39m,
+  assetBundlePatterns: [
+    [32m'**/*'[39m
+  ],
+  plugins: [
+    [32m'expo-font'[39m
+  ],
+  description: [90mundefined[39m,
+  sdkVersion: [32m'54.0.0'[39m,
+  platforms: [
+    [32m'ios'[39m,
+    [32m'android'[39m,
+    [32m'web'[39m
+  ],
+  splash: {
+    image: [32m'./assets/nexa-logo.png'[39m,
+    resizeMode: [32m'contain'[39m,
+    backgroundColor: [32m'#020209'[39m
+  },
+  ios: {
+    supportsTablet: [33mtrue[39m,
+    bundleIdentifier: [32m'com.nexa.ai'[39m
+  },
+  android: {
+    package: [32m'com.nexa.ai'[39m,
+    adaptiveIcon: {
+      foregroundImage: [32m'./assets/adaptive-icon.png'[39m,
+      backgroundColor: [32m'#ffffff'[39m
+    }
+  },
+  web: {
+    favicon: [32m'./assets/icon.png'[39m
+  },
+  extra: {
+    eas: {
+      projectId: [32m'6ebb3c25-14e0-43b0-ae5d-6807ca74c7c9'[39m
+    }
+  }
+}
+
