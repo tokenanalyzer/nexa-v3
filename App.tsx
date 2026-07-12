@@ -3,16 +3,20 @@ import {
   View, Text, TouchableOpacity, StatusBar, SafeAreaView,
   Platform, Animated, Modal, ScrollView,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { THEMES, ThemeKey } from './constants/themes';
 import { hasApiKey } from './constants/gemini';
 import { getActiveAgents, AgentId } from './constants/agents';
-import HomeScreen    from './screens/HomeScreen';
-import IntelScreen   from './screens/IntelScreen';
-import ForgeScreen   from './screens/ForgeScreen';
-import VaultScreen   from './screens/VaultScreen';
-import AboutScreen   from './screens/AboutScreen';
-import ApiKeyScreen  from './screens/ApiKeyScreen';
-import SplashScreen  from './components/SplashScreen';
+import HomeScreen        from './screens/HomeScreen';
+import IntelScreen       from './screens/IntelScreen';
+import ForgeScreen       from './screens/ForgeScreen';
+import VaultScreen       from './screens/VaultScreen';
+import AboutScreen       from './screens/AboutScreen';
+import ApiKeyScreen      from './screens/ApiKeyScreen';
+import SplashScreen      from './components/SplashScreen';
+import OnboardingScreen  from './screens/OnboardingScreen';
+
+const ONBOARDING_KEY = 'nexa_onboarding_done';
 
 const TABS = [
   { id: 'home',  icon: '⚡', label: 'Home'  },
@@ -23,20 +27,25 @@ const TABS = [
 ];
 
 export default function App() {
-  const [ready, setReady]           = useState(false);
-  const [splashDone, setSplashDone] = useState(false);
-  const [hasKey, setHasKey]         = useState(false);
-  const [tab, setTab]               = useState('home');
-  const [theme, setTheme]           = useState<ThemeKey>('light');
-  const [keyModal, setKeyModal]     = useState(false);
-  const [activeAgents, setActiveAgents] = useState<AgentId[]>([]);
+  const [ready, setReady]                   = useState(false);
+  const [splashDone, setSplashDone]         = useState(false);
+  const [onboardingDone, setOnboardingDone] = useState(true);
+  const [hasKey, setHasKey]                 = useState(false);
+  const [tab, setTab]                       = useState('home');
+  const [theme, setTheme]                   = useState<ThemeKey>('light');
+  const [keyModal, setKeyModal]             = useState(false);
+  const [activeAgents, setActiveAgents]     = useState<AgentId[]>([]);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const boot = async () => {
-      const ok = await hasApiKey();
+      const [ok, seen] = await Promise.all([
+        hasApiKey(),
+        AsyncStorage.getItem(ONBOARDING_KEY),
+      ]);
       setHasKey(ok);
+      setOnboardingDone(!!seen);
       if (ok) getActiveAgents().then(setActiveAgents);
       setReady(true);
     };
@@ -45,7 +54,15 @@ export default function App() {
 
   const handleSplashDone = () => {
     setSplashDone(true);
-    Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: false }).start();
+    if (onboardingDone) {
+      Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: false }).start();
+    }
+  };
+
+  const handleOnboardingDone = async () => {
+    await AsyncStorage.setItem(ONBOARDING_KEY, 'true');
+    setOnboardingDone(true);
+    Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: false }).start();
   };
 
   const T = THEMES[theme];
@@ -58,12 +75,22 @@ export default function App() {
     setActiveAgents(agents);
   };
 
-  // Animated splash — show until both API check done AND splash animation finished
+  // Splash screen
   if (!splashDone) {
     return (
       <>
-        <StatusBar barStyle="light-content" backgroundColor="#020209" />
+        <StatusBar barStyle="light-content" backgroundColor="#07071A" />
         <SplashScreen onDone={handleSplashDone} />
+      </>
+    );
+  }
+
+  // First-launch onboarding
+  if (!onboardingDone) {
+    return (
+      <>
+        <StatusBar barStyle="light-content" backgroundColor="#07071A" />
+        <OnboardingScreen onDone={handleOnboardingDone} />
       </>
     );
   }
