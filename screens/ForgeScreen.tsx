@@ -826,40 +826,61 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
 
                       {/* Architect section */}
                       {card.post && (
-                        <View style={{ backgroundColor: '#5E5CE60A', borderRadius: 14, padding: 12, borderWidth: 1, borderColor: '#5E5CE620' }}>
-                          <Text style={{ color: '#5E5CE6', fontSize: 10, fontWeight: '700', marginBottom: 10 }}>✦ CONTENT ARCHITECT  ·  Gemini</Text>
-                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                            <Text style={{ color: textSub, fontSize: 10, fontWeight: '600' }}>Full Post</Text>
-                            <TouchableOpacity onPress={() => copyField(card.post!, `sw-post-${i}`)} style={{ backgroundColor: '#5E5CE612', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 1, borderColor: '#5E5CE625' }}>
-                              <Text style={{ color: '#5E5CE6', fontSize: 9, fontWeight: '600' }}>{copiedField === `sw-post-${i}` ? '✓ Copied' : 'Copy'}</Text>
+                        <View style={{ backgroundColor: '#5E5CE60A', borderRadius: 14, borderWidth: 1, borderColor: '#5E5CE620', overflow: 'hidden' }}>
+                          <View style={{ paddingHorizontal: 12, paddingTop: 12, paddingBottom: 4 }}>
+                            <Text style={{ color: '#5E5CE6', fontSize: 10, fontWeight: '700', marginBottom: 10 }}>✦ CONTENT ARCHITECT  ·  Gemini</Text>
+                          </View>
+
+                          {/* READY POST block inside Swarm card */}
+                          <View style={{ borderRadius: 12, borderWidth: 1.5, borderColor: color + '50', overflow: 'hidden', marginHorizontal: 12, marginBottom: 12 }}>
+                            <View style={{ backgroundColor: color + '18', paddingHorizontal: 12, paddingVertical: 9, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                <Text style={{ fontSize: 13 }}>📋</Text>
+                                <Text style={{ color, fontSize: 11, fontWeight: '800' }}>READY TO POST</Text>
+                              </View>
+                              <Text style={{ color: color + '80', fontSize: 10 }}>{card.post?.length ?? 0} chars</Text>
+                            </View>
+                            <View style={{ backgroundColor: isDark ? '#0D0D1A' : '#FAFAFA', padding: 12 }}>
+                              <Text selectable style={{ color: T.text, fontSize: 13, lineHeight: 22, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' }}>{card.post}</Text>
+                            </View>
+                            <TouchableOpacity
+                              onPress={() => copyField(card.post!, `sw-post-${i}`)}
+                              activeOpacity={0.8}
+                              style={{ backgroundColor: copiedField === `sw-post-${i}` ? '#30D158' : color, padding: 13, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                              <Text style={{ fontSize: 15 }}>{copiedField === `sw-post-${i}` ? '✅' : '📋'}</Text>
+                              <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '800' }}>
+                                {copiedField === `sw-post-${i}` ? 'Copied! Paste on your platform →' : 'Copy Complete Post'}
+                              </Text>
                             </TouchableOpacity>
                           </View>
-                          <Text style={{ color: T.text, fontSize: 13, lineHeight: 21, marginBottom: 12 }}>{card.post}</Text>
-                          {card.cta && (
-                            <View style={{ backgroundColor: color + '12', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: color + '25', marginBottom: 12 }}>
-                              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
-                                <Text style={{ color: textSub, fontSize: 10, fontWeight: '600' }}>Call to Action</Text>
-                                <TouchableOpacity onPress={() => copyField(card.cta!, `sw-cta-${i}`)} style={{ backgroundColor: color + '18', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 1, borderColor: color + '35' }}>
-                                  <Text style={{ color, fontSize: 9, fontWeight: '600' }}>{copiedField === `sw-cta-${i}` ? '✓ Copied' : 'Copy'}</Text>
-                                </TouchableOpacity>
+
+                          <View style={{ paddingHorizontal: 12, paddingBottom: 12 }}>
+                            {card.cta && (
+                              <View style={{ backgroundColor: color + '12', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: color + '25', marginBottom: 12 }}>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
+                                  <Text style={{ color: textSub, fontSize: 10, fontWeight: '600' }}>Call to Action</Text>
+                                  <TouchableOpacity onPress={() => copyField(card.cta!, `sw-cta-${i}`)} style={{ backgroundColor: color + '18', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 1, borderColor: color + '35' }}>
+                                    <Text style={{ color, fontSize: 9, fontWeight: '600' }}>{copiedField === `sw-cta-${i}` ? '✓ Copied' : 'Copy'}</Text>
+                                  </TouchableOpacity>
+                                </View>
+                                <Text style={{ color: T.text, fontSize: 13, fontWeight: '600' }}>{card.cta}</Text>
                               </View>
-                              <Text style={{ color: T.text, fontSize: 13, fontWeight: '600' }}>{card.cta}</Text>
-                            </View>
-                          )}
-                          {card.imagePrompt && (
-                            <View style={{ backgroundColor: isDark ? '#0a0a1a' : '#F8F5FF', borderRadius: 12, padding: 12, borderWidth: 1.5, borderColor: '#7B2FFF50' }}>
-                              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                                <Text style={{ color: '#9B59B6', fontSize: 10, fontWeight: '700' }}>🎨 Visual Prompt  ·  Midjourney / DALL-E</Text>
-                                <TouchableOpacity onPress={() => copyImagePrompt(card.imagePrompt, `sw-${card.platform}-${i}`)}
-                                  style={{ backgroundColor: '#7B2FFF18', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: '#7B2FFF40' }}>
-                                  <Text style={{ color: '#9B59B6', fontSize: 10, fontWeight: '600' }}>
-                                    {copiedPrompt === `sw-${card.platform}-${i}` ? '✓ Copied' : 'Copy'}
-                                  </Text>
-                                </TouchableOpacity>
+                            )}
+                            {card.imagePrompt && (
+                              <View style={{ backgroundColor: isDark ? '#0a0a1a' : '#F8F5FF', borderRadius: 12, padding: 12, borderWidth: 1.5, borderColor: '#7B2FFF50' }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                                  <Text style={{ color: '#9B59B6', fontSize: 10, fontWeight: '700' }}>🎨 Visual Prompt  ·  Midjourney / DALL-E</Text>
+                                  <TouchableOpacity onPress={() => copyImagePrompt(card.imagePrompt, `sw-${card.platform}-${i}`)}
+                                    style={{ backgroundColor: '#7B2FFF18', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: '#7B2FFF40' }}>
+                                    <Text style={{ color: '#9B59B6', fontSize: 10, fontWeight: '600' }}>
+                                      {copiedPrompt === `sw-${card.platform}-${i}` ? '✓ Copied' : 'Copy'}
+                                    </Text>
+                                  </TouchableOpacity>
+                                </View>
+                                <Text style={{ color: isDark ? '#c0a0ff' : '#6B46C1', fontSize: 12, lineHeight: 18 }}>{card.imagePrompt}</Text>
                               </View>
-                              <Text style={{ color: isDark ? '#c0a0ff' : '#6B46C1', fontSize: 12, lineHeight: 18 }}>{card.imagePrompt}</Text>
-                            </View>
-                          )}
+                            )}
+                          </View>
                         </View>
                       )}
 
@@ -965,23 +986,28 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
                       </View>
                     </View>
                     <View style={{ padding: 14, gap: 12 }}>
-                      <View style={{ backgroundColor: ACCENT + '0C', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: ACCENT + '25' }}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                          <Text style={{ color: textSub, fontSize: 10, fontWeight: '600' }}>🎣 Viral Hook</Text>
-                          <TouchableOpacity onPress={() => copyField(pc.hook, `ap-hook-${i}`)} style={{ backgroundColor: ACCENT + '15', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 1, borderColor: ACCENT + '30' }}>
-                            <Text style={{ color: ACCENT, fontSize: 9, fontWeight: '600' }}>{copiedField === `ap-hook-${i}` ? '✓ Copied' : 'Copy'}</Text>
-                          </TouchableOpacity>
+
+                      {/* ── READY POST BLOCK ── */}
+                      <View style={{ borderRadius: 14, borderWidth: 1.5, borderColor: color + '50', overflow: 'hidden' }}>
+                        <View style={{ backgroundColor: color + '18', paddingHorizontal: 14, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+                            <Text style={{ fontSize: 14 }}>📋</Text>
+                            <Text style={{ color, fontSize: 12, fontWeight: '800', letterSpacing: 0.3 }}>READY TO POST</Text>
+                          </View>
+                          <Text style={{ color: color + '80', fontSize: 10, fontWeight: '500' }}>{pc.post?.length ?? 0} chars</Text>
                         </View>
-                        <Text style={{ color: T.text, fontSize: 13, fontStyle: 'italic', lineHeight: 19 }}>"{pc.hook}"</Text>
-                      </View>
-                      <View>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                          <Text style={{ color: textSub, fontSize: 10, fontWeight: '600' }}>Post Content</Text>
-                          <TouchableOpacity onPress={() => copyField(pc.post, `ap-post-${i}`)} style={{ backgroundColor: ACCENT + '15', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 1, borderColor: ACCENT + '30' }}>
-                            <Text style={{ color: ACCENT, fontSize: 9, fontWeight: '600' }}>{copiedField === `ap-post-${i}` ? '✓ Copied' : 'Copy'}</Text>
-                          </TouchableOpacity>
+                        <View style={{ backgroundColor: isDark ? '#0D0D1A' : '#FAFAFA', padding: 14 }}>
+                          <Text selectable style={{ color: T.text, fontSize: 13, lineHeight: 22, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' }}>{pc.post}</Text>
                         </View>
-                        <Text style={{ color: T.text, fontSize: 13, lineHeight: 21 }}>{pc.post}</Text>
+                        <TouchableOpacity
+                          onPress={() => copyField(pc.post, `ap-post-${i}`)}
+                          activeOpacity={0.8}
+                          style={{ backgroundColor: copiedField === `ap-post-${i}` ? '#30D158' : color, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                          <Text style={{ fontSize: 16 }}>{copiedField === `ap-post-${i}` ? '✅' : '📋'}</Text>
+                          <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '800', letterSpacing: 0.3 }}>
+                            {copiedField === `ap-post-${i}` ? 'Copied! Paste on your platform →' : 'Copy Complete Post'}
+                          </Text>
+                        </TouchableOpacity>
                       </View>
                       <View>
                         <Text style={{ color: textSub, fontSize: 10, fontWeight: '600', marginBottom: 8 }}>Hashtag Heatmap  ·  tap to copy</Text>

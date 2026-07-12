@@ -85,9 +85,16 @@ export const sendAutopilotMessage = async (
 ): Promise<string> => {
   const genAI = await getGemini();
   const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash', systemInstruction: AUTOPILOT_SYSTEM });
+  const CHAR_LIMITS: Record<string, number> = { LinkedIn: 1000, Instagram: 2000, 'Twitter/X': 260, TikTok: 1400, YouTube: 500, WhatsApp: 800 };
   const prompt = `Generate a 3-day viral content strategy for: "${topic}". Platforms: ${platforms.join(', ')}. Language: ${language}. Tone: ${tone}.
+
+CRITICAL RULE for "post" field: It must be a COMPLETE, READY-TO-PASTE post. No labels, no sections, no explanations. Write it exactly as it will appear on the platform.
+Format: [Strong hook line that stops the scroll]\\n\\n[2-3 punchy paragraphs in conversational ${tone} human tone — NOT a report, NOT a strategy doc]\\n\\n[1 CTA line]\\n\\n[12-15 hashtags starting with #]
+
+Platform char limits: ${JSON.stringify(CHAR_LIMITS)}. STRICTLY respect the character limit for each platform.
+
 Return ONLY this JSON:
-{"viral_probability":<0-100>,"platform_content":[{"platform":"<name>","hook":"<viral hook>","post":"<full post in ${language} with ${tone} tone>","hashtags":"<12 hashtags>","cta":"<call to action>","image_prompt":"<detailed Midjourney/DALL-E prompt>"}],"content_calendar":[{"day":"Day 1","theme":"<angle>","action":"<posting action>"},{"day":"Day 2","theme":"<angle>","action":"<posting action>"},{"day":"Day 3","theme":"<angle>","action":"<posting action>"}]}`;
+{"viral_probability":<0-100>,"platform_content":[{"platform":"<name>","hook":"<one-line viral hook only>","post":"<COMPLETE READY-TO-PASTE POST as described above — hook + body + CTA + hashtags — within char limit>","hashtags":"<12 hashtags space-separated>","cta":"<standalone CTA line>","image_prompt":"<detailed Midjourney/DALL-E prompt>"}],"content_calendar":[{"day":"Day 1","theme":"<angle>","action":"<posting action>"},{"day":"Day 2","theme":"<angle>","action":"<posting action>"},{"day":"Day 3","theme":"<angle>","action":"<posting action>"}]}`;
   const chat = model.startChat({ history: [] });
   return (await chat.sendMessage(prompt)).response.text();
 };
@@ -142,9 +149,15 @@ const geminiArchitect = async (
 ): Promise<{ viralScore: number; content: Record<string, { post: string; cta: string; imagePrompt: string }> }> => {
   const genAI = await getGemini();
   const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash', systemInstruction: `You are the Content Architect. ${JSON_ONLY}` });
+  const CHAR_LIMITS: Record<string, number> = { LinkedIn: 1000, Instagram: 2000, 'Twitter/X': 260, TikTok: 1400, YouTube: 500, WhatsApp: 800 };
   const prompt = `Topic: "${topic + dnaCtx}". Language: ${language}. Tone: ${tone}. Platforms: ${platforms.join(', ')}.
-As the creative architect, write compelling full-length content for each platform. Return ONLY this JSON:
-{"viralScore":<overall 0-100 viral probability>,"content":[{"platform":"<name>","post":"<complete optimized post body in ${language} with ${tone} tone — make it compelling, platform-native, and shareable>","cta":"<one powerful CTA>","imagePrompt":"<ultra-detailed Midjourney/DALL-E prompt: style, lighting, composition, mood, colors, camera angle — 2-3 sentences>"}]}`;
+
+CRITICAL RULE for "post" field: Write a COMPLETE READY-TO-PASTE post exactly as it will appear on the platform. No labels. No sections. No explanations.
+Format: [Strong hook line]\\n\\n[2-3 punchy paragraphs in conversational ${tone} human tone]\\n\\n[1 CTA line]\\n\\n[12-15 hashtags starting with #]
+Platform char limits — STRICTLY respect: ${JSON.stringify(CHAR_LIMITS)}
+
+Return ONLY this JSON:
+{"viralScore":<overall 0-100>,"content":[{"platform":"<name>","post":"<COMPLETE READY-TO-PASTE POST — hook + body paragraphs + CTA + hashtags — within char limit, human tone, NOT a report>","cta":"<standalone CTA>","imagePrompt":"<ultra-detailed Midjourney/DALL-E prompt: style, lighting, composition, mood, colors, camera angle — 2-3 sentences>"}]}`;
   const raw = (await model.generateContent(prompt)).response.text();
   const parsed = JSON.parse(cleanJSON(raw)) as { viralScore: number; content: { platform: string; post: string; cta: string; imagePrompt: string }[] };
   return {
