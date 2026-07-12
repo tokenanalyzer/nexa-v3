@@ -136,11 +136,19 @@ export default function HomeScreen({
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
           <View>
             <Text style={{ color: textSub, fontSize: 10, fontWeight: '600', letterSpacing: 2, marginBottom: 6 }}>NEURAL CORE v3.0</Text>
-            <Image
-              source={require('../assets/nexa-logo.png')}
-              resizeMode="contain"
-              style={{ width: 160, height: 56, marginTop: -4 }}
-            />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: -2 }}>
+              <Text style={{
+                fontSize: 30, fontWeight: '900', letterSpacing: -1.5, color: T.text,
+                ...(Platform.OS === 'web' ? { textShadow: `0 0 22px ${ACCENT}55` } as object : {}),
+              }}>NEXA</Text>
+              <View style={{
+                backgroundColor: ACCENT, borderRadius: 7,
+                paddingHorizontal: 8, paddingVertical: 3, marginLeft: 6, marginBottom: 2,
+                ...(Platform.OS === 'web' ? { boxShadow: `0 0 12px ${ACCENT}80` } as object : {}),
+              }}>
+                <Text style={{ fontSize: 13, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.5 }}>AI</Text>
+              </View>
+            </View>
           </View>
           <View style={{ alignItems: 'flex-end', gap: 6 }}>
             <View style={{
