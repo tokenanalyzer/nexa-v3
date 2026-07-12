@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { THEMES, ThemeKey } from '../constants/themes';
 import { streamMessage } from '../constants/gemini';
 import { INTEL_CHAT_KEY } from '../constants/vault';
+import { copyToClipboard } from '../constants/clipboard';
 
 interface Message { role: 'user' | 'model'; parts: { text: string }[]; }
 type AgentLabel = 'groq' | 'gemini';
@@ -111,12 +112,9 @@ export default function IntelScreen({ theme }: { theme: ThemeKey }) {
   };
 
   const copyMsg = async (text: string, idx: number) => {
-    try {
-      if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard)
-        await navigator.clipboard.writeText(text);
-      setCopiedIdx(idx);
-      setTimeout(() => setCopiedIdx(null), 2000);
-    } catch {}
+    await copyToClipboard(text);
+    setCopiedIdx(idx);
+    setTimeout(() => setCopiedIdx(null), 2000);
   };
 
   const bgStyle: object = Platform.OS === 'web'

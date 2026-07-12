@@ -61,10 +61,16 @@ export const streamMessage = async (
   const genAI = await getGemini();
   const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash', systemInstruction: SYSTEM });
   const chat = model.startChat({ history });
-  const result = await chat.sendMessageStream(prompt);
-  for await (const chunk of result.stream) {
-    const text = chunk.text();
-    if (text) onChunk(text);
+  try {
+    const result = await chat.sendMessageStream(prompt);
+    for await (const chunk of result.stream) {
+      const text = chunk.text();
+      if (text) onChunk(text);
+    }
+  } catch {
+    // Fallback: non-streaming for native environments where async iterator may fail
+    const fallback = await chat.sendMessage(prompt);
+    onChunk(fallback.response.text());
   }
 };
 

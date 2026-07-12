@@ -1,13 +1,14 @@
-import { Platform, Alert } from 'react-native';
+import { Platform } from 'react-native';
+import * as ExpoClipboard from 'expo-clipboard';
 
 export const copyToClipboard = async (text: string): Promise<void> => {
   try {
     if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
       await navigator.clipboard.writeText(text);
     } else {
-      Alert.alert('Copy', text.slice(0, 200) + (text.length > 200 ? '…' : ''), [{ text: 'OK' }]);
+      await ExpoClipboard.setStringAsync(text);
     }
   } catch {
-    Alert.alert('Copy Failed', 'Could not copy to clipboard.');
+    try { await ExpoClipboard.setStringAsync(text); } catch {}
   }
 };

@@ -14,6 +14,7 @@ import {
 } from '../constants/gemini';
 import { AgentId } from '../constants/agents';
 import { VAULT_STORAGE_KEY, VaultItem, FORGE_STATE_KEY } from '../constants/vault';
+import { copyToClipboard } from '../constants/clipboard';
 
 const LANGUAGES = ['English', 'Hindi', 'Spanish', 'Hinglish'] as const;
 type Language = typeof LANGUAGES[number];
@@ -251,34 +252,24 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
   };
 
   const copy = async () => {
-    try {
-      if (typeof navigator !== 'undefined' && navigator.clipboard) await navigator.clipboard.writeText(getContentString());
-      setCopied(true); setTimeout(() => setCopied(false), 2000);
-    } catch {}
+    await copyToClipboard(getContentString());
+    setCopied(true); setTimeout(() => setCopied(false), 2000);
   };
   const copyImagePrompt = async (prompt: string, key: string) => {
-    try {
-      if (typeof navigator !== 'undefined' && navigator.clipboard) await navigator.clipboard.writeText(prompt);
-      setCopiedPrompt(key); setTimeout(() => setCopiedPrompt(null), 2500);
-    } catch {}
+    await copyToClipboard(prompt);
+    setCopiedPrompt(key); setTimeout(() => setCopiedPrompt(null), 2500);
   };
   const copyHashtag = async (tag: string) => {
-    try {
-      if (typeof navigator !== 'undefined' && navigator.clipboard) await navigator.clipboard.writeText(tag);
-      setCopiedHashtag(tag); setTimeout(() => setCopiedHashtag(null), 1800);
-    } catch {}
+    await copyToClipboard(tag);
+    setCopiedHashtag(tag); setTimeout(() => setCopiedHashtag(null), 1800);
   };
   const copyTweet = async (tweet: string, num: number) => {
-    try {
-      if (typeof navigator !== 'undefined' && navigator.clipboard) await navigator.clipboard.writeText(tweet);
-      setCopiedTweet(num); setTimeout(() => setCopiedTweet(null), 2000);
-    } catch {}
+    await copyToClipboard(tweet);
+    setCopiedTweet(num); setTimeout(() => setCopiedTweet(null), 2000);
   };
   const copyField = async (text: string, key: string) => {
-    try {
-      if (typeof navigator !== 'undefined' && navigator.clipboard) await navigator.clipboard.writeText(text);
-      setCopiedField(key); setTimeout(() => setCopiedField(null), 2000);
-    } catch {}
+    await copyToClipboard(text);
+    setCopiedField(key); setTimeout(() => setCopiedField(null), 2000);
   };
   const saveToVault = async () => {
     try {

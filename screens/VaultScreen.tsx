@@ -7,13 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { THEMES, ThemeKey } from '../constants/themes';
 import { VAULT_STORAGE_KEY, SWARM_HISTORY_KEY, VaultItem, SwarmHistoryItem } from '../constants/vault';
 import { getOptimalPostingTime } from '../constants/gemini';
-
-const copyToClipboard = async (text: string) => {
-  try {
-    if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard)
-      await navigator.clipboard.writeText(text);
-  } catch {}
-};
+import { copyToClipboard } from '../constants/clipboard';
 
 const AGENT_META: Record<string, { color: string; badge: string }> = {
   gemini: { color: '#5E5CE6', badge: '✦' },
