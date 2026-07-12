@@ -200,9 +200,33 @@ export default function AboutScreen({ theme }: { theme: ThemeKey }) {
         </View>
       </View>
 
+      {/* Legal */}
+      <View style={{ backgroundColor: cardBg, borderRadius: 14, borderWidth: 1, borderColor: cardBorder, overflow: 'hidden', marginBottom: 20 }}>
+        <TouchableOpacity
+          onPress={() => Linking.openURL('https://tokenanalyzer.github.io/nexa-v3/privacy-policy.html')}
+          style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14, borderBottomWidth: 1, borderBottomColor: cardBorder }}
+          activeOpacity={0.7}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <Text style={{ fontSize: 16 }}>🔒</Text>
+            <Text style={{ color: T.text, fontSize: 13, fontWeight: '600' }}>Privacy Policy</Text>
+          </View>
+          <Text style={{ color: textSub, fontSize: 13 }}>→</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => Linking.openURL('mailto:adilhussain3413@gmail.com?subject=NEXA AI - Data Deletion Request')}
+          style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14 }}
+          activeOpacity={0.7}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <Text style={{ fontSize: 16 }}>🗑️</Text>
+            <Text style={{ color: T.text, fontSize: 13, fontWeight: '600' }}>Request Data Deletion</Text>
+          </View>
+          <Text style={{ color: textSub, fontSize: 13 }}>→</Text>
+        </TouchableOpacity>
+      </View>
+
       {/* Footer */}
       <View style={{ alignItems: 'center', gap: 4 }}>
-        <Text style={{ color: textSub, fontSize: 11 }}>Nexa Pro — Build 3.0.0</Text>
+        <Text style={{ color: textSub, fontSize: 11 }}>Nexa AI — v1.0.0 · Build 3.0</Text>
         <Text style={{ color: textSub, fontSize: 11 }}>by Adil Hussain · @Husain3413</Text>
         <Text style={{ color: cardBorder, fontSize: 10, marginTop: 4 }}>Gemini · Groq · SambaNova</Text>
       </View>

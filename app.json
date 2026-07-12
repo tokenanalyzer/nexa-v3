@@ -24,7 +24,9 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.nexa.ai",
-      "permissions": ["INTERNET"]
+      "versionCode": 1,
+      "permissions": ["INTERNET"],
+      "privacyPolicyUrl": "https://tokenanalyzer.github.io/nexa-v3/privacy-policy.html"
     },
     "web": {
       "favicon": "./assets/icon.png"
