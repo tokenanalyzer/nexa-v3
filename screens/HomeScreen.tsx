@@ -198,30 +198,6 @@ export default function HomeScreen({
           )}
         </View>
 
-        {/* ── Theme Switcher ───────────────────────────────────── */}
-        <View style={{ marginBottom: 18 }}>
-          <Text style={{ color: textSub, fontSize: 11, fontWeight: '600', marginBottom: 10 }}>THEME</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              {(Object.keys(THEMES) as ThemeKey[]).map(k => {
-                const active = theme === k;
-                const themeAccent = THEMES[k].accent;
-                return (
-                  <TouchableOpacity key={k} onPress={() => setTheme(k)}
-                    style={{
-                      paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
-                      borderWidth: active ? 1.5 : 1,
-                      borderColor: active ? themeAccent + '80' : cardBorder,
-                      backgroundColor: active ? themeAccent + '14' : cardBg,
-                      ...(active && Platform.OS === 'web' ? { boxShadow: `0 0 10px ${themeAccent}35` } as object : {}),
-                    }} activeOpacity={0.8}>
-                    <Text style={{ color: active ? themeAccent : textSub, fontSize: 12, fontWeight: '600' }}>{THEMES[k].name}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </ScrollView>
-        </View>
 
         {/* ── Stats Row ────────────────────────────────────────── */}
         <View style={{ flexDirection: 'row', gap: 10, marginBottom: 18 }}>
