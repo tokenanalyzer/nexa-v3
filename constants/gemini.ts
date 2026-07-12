@@ -48,15 +48,20 @@ export const streamMessage = async (
 ): Promise<void> => {
   const groqKey = await getAgentKey('groq');
   if (groqKey) {
-    onAgentChange?.('groq');
-    const messages = [
-      { role: 'system', content: SYSTEM },
-      ...history.map(h => ({ role: h.role === 'model' ? 'assistant' : h.role, content: h.parts[0].text })),
-      { role: 'user', content: prompt },
-    ];
-    await groqStream(groqKey, messages, onChunk);
-    return;
+    try {
+      onAgentChange?.('groq');
+      const messages = [
+        { role: 'system', content: SYSTEM },
+        ...history.map(h => ({ role: h.role === 'model' ? 'assistant' : h.role, content: h.parts[0].text })),
+        { role: 'user', content: prompt },
+      ];
+      await groqStream(groqKey, messages, onChunk);
+      return;
+    } catch {
+      // Groq failed — fall through to Gemini
+    }
   }
+  // Gemini streaming with non-streaming fallback for native APK
   onAgentChange?.('gemini');
   const genAI = await getGemini();
   const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash', systemInstruction: SYSTEM });

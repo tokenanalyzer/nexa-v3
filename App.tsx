@@ -15,8 +15,10 @@ import AboutScreen       from './screens/AboutScreen';
 import ApiKeyScreen      from './screens/ApiKeyScreen';
 import SplashScreen      from './components/SplashScreen';
 import OnboardingScreen  from './screens/OnboardingScreen';
+import WhatsNewModal, { CURRENT_VERSION } from './components/WhatsNewModal';
 
-const ONBOARDING_KEY = 'nexa_onboarding_done';
+const ONBOARDING_KEY  = 'nexa_onboarding_done';
+const VERSION_KEY     = 'nexa_app_version';
 
 const TABS = [
   { id: 'home',  icon: '⚡', label: 'Home'  },
@@ -30,6 +32,7 @@ export default function App() {
   const [ready, setReady]                   = useState(false);
   const [splashDone, setSplashDone]         = useState(false);
   const [onboardingDone, setOnboardingDone] = useState(true);
+  const [whatsNew, setWhatsNew]             = useState(false);
   const [hasKey, setHasKey]                 = useState(false);
   const [tab, setTab]                       = useState('home');
   const [theme, setTheme]                   = useState<ThemeKey>('light');
@@ -40,13 +43,21 @@ export default function App() {
 
   useEffect(() => {
     const boot = async () => {
-      const [ok, seen] = await Promise.all([
+      const [ok, seen, savedVer] = await Promise.all([
         hasApiKey(),
         AsyncStorage.getItem(ONBOARDING_KEY),
+        AsyncStorage.getItem(VERSION_KEY),
       ]);
       setHasKey(ok);
       setOnboardingDone(!!seen);
       if (ok) getActiveAgents().then(setActiveAgents);
+      // Show What's New if version changed and onboarding already done
+      if (seen && savedVer && savedVer !== CURRENT_VERSION) {
+        setWhatsNew(true);
+      }
+      if (savedVer !== CURRENT_VERSION) {
+        await AsyncStorage.setItem(VERSION_KEY, CURRENT_VERSION);
+      }
       setReady(true);
     };
     boot();
@@ -136,6 +147,9 @@ export default function App() {
       />
 
       <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+
+        {/* What's New modal */}
+        <WhatsNewModal visible={whatsNew} onClose={() => setWhatsNew(false)} />
 
         {/* Keys modal */}
         <Modal visible={keyModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setKeyModal(false)}>
