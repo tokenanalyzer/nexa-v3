@@ -9,6 +9,63 @@ export const hasApiKey = async (): Promise<boolean> => {
   return !!key;
 };
 
+// ── Quick Post — single platform, streaming, ~5 seconds ────────
+const QUICK_CHAR_LIMITS: Record<string, number> = {
+  LinkedIn: 1000, Instagram: 2000, 'Twitter/X': 260,
+  TikTok: 1400, YouTube: 500, WhatsApp: 800,
+};
+
+export const generateQuickPost = async (
+  topic: string,
+  platform: string,
+  language: string,
+  tone: string,
+  onChunk: (text: string) => void
+): Promise<void> => {
+  const limit = QUICK_CHAR_LIMITS[platform] ?? 1500;
+  const systemPrompt = `You are an expert social media copywriter. Write ONLY the ready-to-post content — no labels, no sections, no explanations. Human tone, not AI tone.`;
+  const userPrompt = `Write a complete ${platform} post in ${language} with ${tone} tone about: "${topic}".
+
+Format (write it exactly like this, ready to paste):
+[Scroll-stopping first line — the hook]
+
+[2-3 short punchy paragraphs — conversational, human, NOT a report]
+
+[1 engaging CTA question or action]
+
+[12-15 hashtags starting with #]
+
+STRICT rules:
+- Total length UNDER ${limit} characters
+- Sound like a real human wrote it
+- No "Slide 1:", no "Post Content:", no section labels
+- No markdown bold/italic, just plain text with line breaks
+- ${platform === 'Twitter/X' ? 'Twitter: ONE tweet only, max 260 chars including hashtags' : ''}`;
+
+  const groqKey = await getAgentKey('groq');
+  if (groqKey) {
+    try {
+      await groqStream(groqKey, [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ], onChunk);
+      return;
+    } catch { /* fall through to Gemini */ }
+  }
+  const genAI = new GoogleGenerativeAI(await getAgentKey('gemini'));
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash', systemInstruction: systemPrompt });
+  try {
+    const result = await model.generateContentStream(userPrompt);
+    for await (const chunk of result.stream) {
+      const t = chunk.text();
+      if (t) onChunk(t);
+    }
+  } catch {
+    const result = await model.generateContent(userPrompt);
+    onChunk(result.response.text());
+  }
+};
+
 const SYSTEM = `You are NEXA AI — an expert social media content strategist. You create viral, platform-optimized content for Instagram, YouTube, Twitter/X, LinkedIn, TikTok and WhatsApp. Be specific, creative, and data-driven.`;
 const AUTOPILOT_SYSTEM = `You are NEXA AUTOPILOT — an elite autonomous viral marketing AI. Respond ONLY with valid JSON. No markdown fences. No explanation. No text outside the JSON object.`;
 const JSON_ONLY = 'Respond ONLY with valid JSON. No markdown. No explanation. No text outside the JSON.';

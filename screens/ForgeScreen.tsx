@@ -8,7 +8,7 @@ import { THEMES, ThemeKey } from '../constants/themes';
 import {
   sendMessage, sendAutopilotMessage, getTrendingTopics,
   generateABHooks, generateViralThread, getOptimalPostingTime,
-  getEngagementEstimate, analyzeBrandVoice, swarmForge,
+  getEngagementEstimate, analyzeBrandVoice, swarmForge, generateQuickPost,
   PLATFORMS, BRAND_VOICE_KEY,
   TrendingTopic, ABHooks, ThreadTweet, BrandVoiceProfile, SwarmPlatformCard,
 } from '../constants/gemini';
@@ -105,8 +105,8 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
   const [language, setLanguage] = useState<Language>('English');
   const [tone, setTone]         = useState<Tone>('Professional');
 
-  // Mode: 'manual' | 'autopilot' | 'swarm'
-  const [mode, setMode] = useState<'manual' | 'autopilot' | 'swarm'>('manual');
+  // Mode: 'quick' | 'manual' | 'autopilot' | 'swarm'
+  const [mode, setMode] = useState<'quick' | 'manual' | 'autopilot' | 'swarm'>('quick');
 
   const [result, setResult]               = useState('');
   const [autopilotResult, setAutopilotResult] = useState<AutopilotResult | null>(null);
@@ -114,6 +114,12 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
   const [copied, setCopied]               = useState(false);
   const [saved, setSaved]                 = useState(false);
   const [copiedPrompt, setCopiedPrompt]   = useState<string | null>(null);
+
+  // Quick Post state
+  const [quickPost, setQuickPost]           = useState('');
+  const [quickStreaming, setQuickStreaming]  = useState(false);
+  const [quickPlatform, setQuickPlatform]   = useState('Instagram');
+  const [quickCopied, setQuickCopied]       = useState(false);
 
   // Swarm state
   const [swarmCards, setSwarmCards]       = useState<SwarmPlatformCard[]>([]);
@@ -191,6 +197,7 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
     setSaved(false); setSwarmCards([]);
     setSwarmStatus({ gemini: 'idle', groq: 'idle', samba: 'idle' });
     setSwarmTiming({});
+    setQuickPost(''); setQuickCopied(false);
   };
 
   const clearForge = () => {
@@ -202,6 +209,21 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
   const dnaContext = dnaProfile
     ? `\n\n[BRAND VOICE — Apply this voice: ${dnaProfile.name}. Tone: ${dnaProfile.tone_fingerprint}. Power words: ${dnaProfile.power_words.join(', ')}. Avoid: ${dnaProfile.avoid_words.join(', ')}]`
     : '';
+
+  // ── Quick Post forge ───────────────────────────────────────────
+  const forgeQuick = async () => {
+    if (!topic.trim() || quickStreaming) return;
+    setQuickStreaming(true); setQuickPost(''); setQuickCopied(false);
+    try {
+      await generateQuickPost(topic, quickPlatform, language, tone, (chunk) => {
+        setQuickPost(prev => prev + chunk);
+      });
+    } catch (e: unknown) {
+      setQuickPost('Error: ' + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setQuickStreaming(false);
+    }
+  };
 
   // ── Forge (all modes) ──────────────────────────────────────────
   const forge = async () => {
@@ -384,7 +406,7 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
   );
 
   // ── Mode pill button ──────────────────────────────────────────
-  const ModePill = ({ id, icon, label, desc, color }: { id: 'manual' | 'autopilot' | 'swarm'; icon: string; label: string; desc: string; color: string }) => {
+  const ModePill = ({ id, icon, label, desc, color }: { id: 'quick' | 'manual' | 'autopilot' | 'swarm'; icon: string; label: string; desc: string; color: string }) => {
     const active = mode === id;
     return (
       <TouchableOpacity onPress={() => setMode(id)}
@@ -503,12 +525,39 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
         {/* ── Mode Selector ────────────────────────────────────── */}
         <View style={{ marginBottom: 16 }}>
           <SectionLabel>GENERATION MODE</SectionLabel>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <ModePill id="manual"    icon="⚡" label="Manual"    desc="Quick single generation" color={ACCENT} />
-            <ModePill id="autopilot" icon="🤖" label="Autopilot" desc="3-day calendar plan"     color="#FF9F0A" />
-            <ModePill id="swarm"     icon="🐝" label="Swarm"     desc="All 3 agents together"   color="#30D158" />
+          <View style={{ flexDirection: 'row', gap: 6 }}>
+            <ModePill id="quick"     icon="⚡" label="Quick"     desc="1 platform, 5 secs"      color="#00D4FF" />
+            <ModePill id="manual"    icon="✍️" label="Manual"    desc="Multi-platform"           color={ACCENT} />
+            <ModePill id="autopilot" icon="🤖" label="Autopilot" desc="3-day calendar"           color="#FF9F0A" />
+            <ModePill id="swarm"     icon="🐝" label="Swarm"     desc="3 AI agents"              color="#30D158" />
           </View>
         </View>
+
+        {/* ── Quick Mode: Single Platform Picker ───────────────── */}
+        {mode === 'quick' && (
+          <View style={{ marginBottom: 16 }}>
+            <SectionLabel icon="🎯">PICK ONE PLATFORM</SectionLabel>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {PLATFORMS.map(p => {
+                const active = quickPlatform === p.name;
+                return (
+                  <TouchableOpacity key={p.id} onPress={() => setQuickPlatform(p.name)}
+                    style={{
+                      paddingHorizontal: 14, paddingVertical: 9, borderRadius: 20,
+                      borderWidth: active ? 2 : 1,
+                      borderColor: active ? p.color : cardBorder,
+                      backgroundColor: active ? p.color + '18' : cardBg,
+                      ...shadow(active ? p.color : undefined),
+                    }} activeOpacity={0.8}>
+                    <Text style={{ color: active ? p.color : textSub, fontSize: 13, fontWeight: active ? '700' : '500' }}>
+                      {p.icon} {p.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        )}
 
         {/* ── Tone Matrix ──────────────────────────────────────── */}
         <View style={{ marginBottom: 16 }}>
@@ -653,15 +702,32 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
             </View>
           )}
           <TextInput value={topic} onChangeText={setTopic} multiline
-            placeholder={mode === 'swarm' ? 'Enter your topic — all 3 agents will collaborate…' : 'Enter your topic, or pick one from Trend Scout above…'}
+            placeholder={
+              mode === 'quick'     ? `Type your topic — get a ${quickPlatform} post in seconds…`
+              : mode === 'swarm'   ? 'Enter your topic — all 3 agents will collaborate…'
+              : 'Enter your topic, or pick one from Trend Scout above…'
+            }
             placeholderTextColor={textSub}
             style={{ color: T.text, fontSize: 15, minHeight: 60 }} />
         </View>
 
         {/* ── Forge Button ─────────────────────────────────────── */}
-        {(() => {
+        {mode === 'quick' ? (
+          <TouchableOpacity onPress={forgeQuick} disabled={quickStreaming || !topic.trim()}
+            style={{
+              backgroundColor: quickStreaming || !topic.trim() ? (isDark ? T.surface : '#E5E5EA') : '#00D4FF',
+              borderRadius: 14, height: 54, alignItems: 'center', justifyContent: 'center',
+              flexDirection: 'row', gap: 10, marginBottom: 20,
+              ...(!quickStreaming && topic.trim() ? accentGlow('#00D4FF') : {}),
+            }} activeOpacity={0.85}>
+            {quickStreaming && <ActivityIndicator color={isDark ? '#00D4FF' : '#fff'} size="small" />}
+            <Text style={{ color: quickStreaming || !topic.trim() ? textSub : '#fff', fontWeight: '700', fontSize: 15, letterSpacing: -0.2 }}>
+              {quickStreaming ? `Writing ${quickPlatform} post…` : `⚡ Quick Post for ${quickPlatform}`}
+            </Text>
+          </TouchableOpacity>
+        ) : (() => {
           const modeColor = mode === 'swarm' ? '#30D158' : mode === 'autopilot' ? '#FF9F0A' : ACCENT;
-          const modeIcon  = mode === 'swarm' ? '🐝' : mode === 'autopilot' ? '🤖' : '⚡';
+          const modeIcon  = mode === 'swarm' ? '🐝' : mode === 'autopilot' ? '🤖' : '✍️';
           const modeLabel = loading
             ? (mode === 'swarm' ? 'Swarm Working…' : mode === 'autopilot' ? 'Autopilot Running…' : 'Generating…')
             : mode === 'swarm' ? `${modeIcon} Launch Agent Swarm  (${selected.length} platform${selected.length > 1 ? 's' : ''})`
@@ -682,6 +748,87 @@ export default function ForgeScreen({ theme }: { theme: ThemeKey }) {
             </TouchableOpacity>
           );
         })()}
+
+        {/* ════════════════════════════════════════════════════════ */}
+        {/* ⚡ QUICK POST RESULT                                     */}
+        {/* ════════════════════════════════════════════════════════ */}
+        {mode === 'quick' && (quickPost || quickStreaming) && (
+          <View style={{
+            backgroundColor: cardBg, borderRadius: 20, overflow: 'hidden',
+            borderWidth: 1.5, borderColor: '#00D4FF40', marginBottom: 20,
+            ...shadow('#00D4FF'),
+          }}>
+            {/* Header */}
+            <View style={{ backgroundColor: '#00D4FF18', padding: 14, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <View style={{ backgroundColor: '#00D4FF25', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5, borderWidth: 1, borderColor: '#00D4FF50' }}>
+                <Text style={{ color: '#00D4FF', fontSize: 11, fontWeight: '700', letterSpacing: 0.5 }}>
+                  ⚡ QUICK POST · {quickPlatform.toUpperCase()}
+                </Text>
+              </View>
+              {!quickStreaming && quickPost && (
+                <View style={{ marginLeft: 'auto', backgroundColor: '#00D4FF18', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: '#00D4FF35' }}>
+                  <Text style={{ color: '#00D4FF', fontSize: 10, fontWeight: '600' }}>{quickPost.length} chars</Text>
+                </View>
+              )}
+            </View>
+
+            {/* Streaming post content */}
+            <View style={{ padding: 16 }}>
+              <Text style={{ color: T.text, fontSize: 14, lineHeight: 22 }}>
+                {quickPost}
+                {quickStreaming && <Text style={{ color: '#00D4FF' }}>▌</Text>}
+              </Text>
+            </View>
+
+            {/* Copy button — shown when streaming is done */}
+            {!quickStreaming && quickPost && (
+              <View style={{ padding: 14, paddingTop: 0, gap: 10 }}>
+                <TouchableOpacity
+                  onPress={async () => {
+                    await copyToClipboard(quickPost);
+                    setQuickCopied(true);
+                    setTimeout(() => setQuickCopied(false), 2500);
+                  }}
+                  style={{
+                    backgroundColor: quickCopied ? '#30D158' : '#00D4FF',
+                    borderRadius: 12, padding: 14,
+                    alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8,
+                    ...accentGlow(quickCopied ? '#30D158' : '#00D4FF'),
+                  }} activeOpacity={0.85}>
+                  <Text style={{ fontSize: 16 }}>{quickCopied ? '✅' : '📋'}</Text>
+                  <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>
+                    {quickCopied ? 'Copied! Open your app and paste →' : `Copy & Post on ${quickPlatform}`}
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Save to Vault + Regenerate */}
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <TouchableOpacity
+                    onPress={async () => {
+                      const existing = await AsyncStorage.getItem(VAULT_STORAGE_KEY);
+                      const items: VaultItem[] = existing ? JSON.parse(existing) : [];
+                      const newItem: VaultItem = {
+                        id: Date.now(),
+                        platform: quickPlatform,
+                        title: topic,
+                        content: quickPost,
+                        date: new Date().toISOString(),
+                      };
+                      await AsyncStorage.setItem(VAULT_STORAGE_KEY, JSON.stringify([newItem, ...items]));
+                      Alert.alert('Saved!', `Quick post saved to Vault.`);
+                    }}
+                    style={{ flex: 1, backgroundColor: isDark ? T.card : '#F5F5F7', borderRadius: 12, padding: 13, alignItems: 'center', borderWidth: 1, borderColor: cardBorder }}>
+                    <Text style={{ color: T.text, fontSize: 13, fontWeight: '600' }}>💾 Save to Vault</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={forgeQuick}
+                    style={{ flex: 1, backgroundColor: isDark ? T.card : '#F5F5F7', borderRadius: 12, padding: 13, alignItems: 'center', borderWidth: 1, borderColor: cardBorder }}>
+                    <Text style={{ color: T.text, fontSize: 13, fontWeight: '600' }}>🔁 Regenerate</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+          </View>
+        )}
 
         {/* ════════════════════════════════════════════════════════ */}
         {/* 🐝 AGENT SWARM RESULTS                                  */}
