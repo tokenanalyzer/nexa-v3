@@ -131,6 +131,41 @@ export const groqStream = async (
   }
 };
 
+// ── SambaNova streaming helper ────────────────────────────────
+export const sambaStream = async (
+  key: string,
+  messages: { role: string; content: string }[],
+  onChunk: (t: string) => void,
+  model = 'Meta-Llama-3.3-70B-Instruct'
+): Promise<void> => {
+  const res = await fetch('https://api.sambanova.ai/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+    body: JSON.stringify({ model, messages, temperature: 0.7, max_tokens: 4096, stream: true }),
+  });
+  if (!res.ok) throw new Error(`SambaNova ${res.status}: ${await res.text()}`);
+  const reader = res.body?.getReader();
+  if (!reader) throw new Error('No stream body');
+  const decoder = new TextDecoder();
+  let buf = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    const lines = buf.split('\n');
+    buf = lines.pop() ?? '';
+    for (const line of lines) {
+      const l = line.replace(/^data: /, '').trim();
+      if (!l || l === '[DONE]') continue;
+      try {
+        const j = JSON.parse(l);
+        const t = j.choices?.[0]?.delta?.content;
+        if (t) onChunk(t);
+      } catch {}
+    }
+  }
+};
+
 // ── SambaNova REST helper ──────────────────────────────────────
 export const sambaChat = async (
   key: string,

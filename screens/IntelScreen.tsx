@@ -10,7 +10,7 @@ import { INTEL_CHAT_KEY } from '../constants/vault';
 import { copyToClipboard } from '../constants/clipboard';
 
 interface Message { role: 'user' | 'model'; parts: { text: string }[]; }
-type AgentLabel = 'groq' | 'gemini';
+type AgentLabel = 'groq' | 'gemini' | 'samba';
 
 const SUGGESTIONS = [
   'What are the top 3 content trends dominating 2026?',
@@ -47,8 +47,9 @@ export default function IntelScreen({ theme }: { theme: ThemeKey }) {
   const dotAnim   = useRef(new Animated.Value(0)).current;
 
   const AGENT_META: Record<AgentLabel, { label: string; badge: string; color: string; model: string }> = {
-    groq:   { label: 'Groq',   badge: '⚡', color: '#F43F5E', model: 'Llama 3.3 70B' },
-    gemini: { label: 'Gemini', badge: '✦', color: ACCENT,    model: '2.5 Flash'      },
+    groq:   { label: 'Groq',       badge: '⚡', color: '#F43F5E', model: 'Llama 3.3 70B' },
+    gemini: { label: 'Gemini',     badge: '✦', color: ACCENT,    model: '2.5 Flash'      },
+    samba:  { label: 'SambaNova',  badge: '◆', color: '#0EA5E9', model: 'Llama 3.3 70B'  },
   };
 
   // Load persisted chat on mount

@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { getAgentKey, groqChat, groqStream, sambaChat, AgentId } from './agents';
+import { getAgentKey, groqChat, groqStream, sambaChat, sambaStream, AgentId } from './agents';
 
 export { GEMINI_KEY_STORAGE } from './agents';
 export { testGeminiKey as testApiKey } from './agents';
@@ -97,42 +97,81 @@ export const sendMessage = async (
   return (await chat.sendMessage(prompt)).response.text();
 };
 
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+const is503 = (e: unknown) => String(e).includes('503') || String(e).includes('high demand') || String(e).includes('overloaded');
+
 export const streamMessage = async (
   prompt: string,
   history: { role: string; parts: { text: string }[] }[],
   onChunk: (chunk: string) => void,
-  onAgentChange?: (agent: 'groq' | 'gemini') => void
+  onAgentChange?: (agent: 'groq' | 'gemini' | 'samba') => void
 ): Promise<void> => {
+  const msgList = [
+    { role: 'system', content: SYSTEM },
+    ...history.map(h => ({ role: h.role === 'model' ? 'assistant' : h.role, content: h.parts[0].text })),
+    { role: 'user', content: prompt },
+  ];
+
+  // ── Tier 1: Groq (fastest) ──────────────────────────────────
   const groqKey = await getAgentKey('groq');
   if (groqKey) {
     try {
       onAgentChange?.('groq');
-      const messages = [
-        { role: 'system', content: SYSTEM },
-        ...history.map(h => ({ role: h.role === 'model' ? 'assistant' : h.role, content: h.parts[0].text })),
-        { role: 'user', content: prompt },
-      ];
-      await groqStream(groqKey, messages, onChunk);
+      await groqStream(groqKey, msgList, onChunk);
       return;
-    } catch {
-      // Groq failed — fall through to Gemini
-    }
+    } catch { /* fall through */ }
   }
-  // Gemini streaming with non-streaming fallback for native APK
+
+  // ── Tier 2: SambaNova ───────────────────────────────────────
+  const sambaKey = await getAgentKey('samba');
+  if (sambaKey) {
+    try {
+      onAgentChange?.('samba');
+      await sambaStream(sambaKey, msgList, onChunk);
+      return;
+    } catch { /* fall through */ }
+  }
+
+  // ── Tier 3: Gemini streaming (with 503 retry) ───────────────
   onAgentChange?.('gemini');
   const genAI = await getGemini();
   const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash', systemInstruction: SYSTEM });
   const chat = model.startChat({ history });
-  try {
-    const result = await chat.sendMessageStream(prompt);
-    for await (const chunk of result.stream) {
-      const text = chunk.text();
-      if (text) onChunk(text);
+
+  const tryGeminiStream = async (): Promise<boolean> => {
+    try {
+      const result = await chat.sendMessageStream(prompt);
+      for await (const chunk of result.stream) {
+        const text = chunk.text();
+        if (text) onChunk(text);
+      }
+      return true;
+    } catch (e) {
+      if (is503(e)) return false; // signal retry
+      throw e; // non-503 error — propagate
     }
-  } catch {
-    // Fallback: non-streaming for native environments where async iterator may fail
-    const fallback = await chat.sendMessage(prompt);
+  };
+
+  const ok = await tryGeminiStream();
+  if (ok) return;
+
+  // 503 — wait 3s and retry once
+  onChunk('\n\n_Gemini is busy, retrying in 3s…_\n\n');
+  await sleep(3000);
+
+  // ── Tier 4: Gemini non-streaming retry ─────────────────────
+  try {
+    const fresh = model.startChat({ history });
+    const fallback = await fresh.sendMessage(prompt);
     onChunk(fallback.response.text());
+  } catch (e) {
+    if (is503(e)) {
+      throw new Error(
+        'All AI models are temporarily busy. Please try again in a few seconds.\n\n' +
+        'Tip: Add a Groq or SambaNova key in the Keys tab — they are faster and have no demand spikes.'
+      );
+    }
+    throw e;
   }
 };
 
