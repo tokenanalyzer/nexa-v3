@@ -186,14 +186,14 @@ export default function SplashScreen({ onDone }: { onDone: () => void }) {
         {/* NEXA AI text as the logo mark */}
         <View style={{ alignItems: 'center' }}>
           <Text style={{
-            fontSize: 28, fontWeight: '900', letterSpacing: -1,
+            fontSize: 38, fontWeight: '900', letterSpacing: -2,
             color: '#FFFFFF',
-            ...(Platform.OS === 'web' ? { textShadow: `0 0 20px ${ACCENT}` } as object : {}),
-          }}>N<Text style={{ color: ACCENT2 }}>X</Text></Text>
+            ...(Platform.OS === 'web' ? { textShadow: `0 0 24px ${ACCENT}, 0 0 48px ${ACCENT}80` } as object : {}),
+          }}>N<Text style={{ color: ACCENT }}>.</Text></Text>
           <View style={{
-            width: 44, height: 2, borderRadius: 1,
-            backgroundColor: ACCENT, marginTop: 2,
-            ...(Platform.OS === 'web' ? { boxShadow: `0 0 8px ${ACCENT}` } as object : {}),
+            width: 38, height: 2.5, borderRadius: 2,
+            backgroundColor: ACCENT, marginTop: 1,
+            ...(Platform.OS === 'web' ? { boxShadow: `0 0 12px ${ACCENT}` } as object : {}),
           }} />
         </View>
       </Animated.View>

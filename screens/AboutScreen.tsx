@@ -203,7 +203,7 @@ export default function AboutScreen({ theme }: { theme: ThemeKey }) {
       {/* Legal */}
       <View style={{ backgroundColor: cardBg, borderRadius: 14, borderWidth: 1, borderColor: cardBorder, overflow: 'hidden', marginBottom: 20 }}>
         <TouchableOpacity
-          onPress={() => Linking.openURL('https://tokenanalyzer.github.io/nexa-v3/privacy-policy.html')}
+          onPress={() => Linking.openURL(Platform.OS === 'web' ? '/privacy-policy.html' : 'https://nexa-ai.replit.app/privacy-policy.html')}
           style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14, borderBottomWidth: 1, borderBottomColor: cardBorder }}
           activeOpacity={0.7}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
